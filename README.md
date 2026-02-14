@@ -29,10 +29,11 @@ A web tool that converts geographic coordinates (latitude/longitude) into [Cooja
 
 ## Quick start
 
-1. Open **`cooja_positioner_last_point_circle.html`** in a modern browser (no server required).
-2. Use **Search Location** to go to a region, then set **Work Mode** to **Point Add**.
-3. Choose **Scenario**: **Mobile** (one node over time) or **Fixed** (multiple nodes, time 0).
-4. Click on the map to add points. Use **Copy** or **Save positions.dat** to get the output for Cooja.
+1. [Click](https://cooja-positioner-project.github.io/) for using online
+2. You can also download this repository and open [index.html](https://github.com/cooja-positioner-project/cooja-positioner/blob/main/index.html) file in your browser localy (no server required).
+3. Use **Search Location** to go to a region, then set **Work Mode** to **Point Add**.
+4. Choose **Scenario**: **Mobile** (one node over time) or **Fixed** (multiple nodes, time 0).
+5. Click on the map to add points. Use **Copy** or **Save positions.dat** to get the output for Cooja.
 
 ---
 
@@ -40,25 +41,18 @@ A web tool that converts geographic coordinates (latitude/longitude) into [Cooja
 
 ### Main interface (Map + Sidebar)
 
-![Main interface](docs/screenshot_main.png)  
+![Main interface](./preview.png)  
 *Map view with sidebar: Search, Scenario (Mobile/Fixed), Work Mode, and position list.*
-
-### Mobile scenario — one node, time steps
-
-![Mobile scenario](docs/screenshot_mobile.png)  
 *Mobile scenario: same node ID on all points, time column increases (0, 1, 2, …).*
-
-### Fixed scenario — multiple nodes, time zero
-
-![Fixed scenario](docs/screenshot_fixed.png)  
 *Fixed scenario: different node IDs per point, time always 0.*
 
-### positions.dat output
+### Sensor nodes deployed on a bridge
+![bridge-toplogy](./L-shaped-cooja-positioner.png)
+*Tool generates a `positions.dat` file (node_id, time, x, y, z).*
 
-![Output](docs/screenshot_output.png)  
-*Generated `positions.dat` (node_id, time, x, y, z) and Copy/Save buttons.*
-
-> **Note:** Add your own screenshots in the `docs/` folder as `screenshot_main.png`, `screenshot_mobile.png`, `screenshot_fixed.png`, and `screenshot_output.png`, or change the paths above to match your files.
+### Projection of the bridge nodes onto the Cooja coordinate system
+![cooja-projection](./L-shaped-cooja-projection.png)  
+*After loading `positions.dat` file in Cooja simulator.*
 
 ---
 
@@ -89,12 +83,6 @@ node_id time x y z
 
 ---
 
-## File
-
-- **App (latest):** `cooja_positioner_last_point_circle.html` — open this file to use the tool.
-
----
-
 ## Please cite us
 
 If you use Cooja Positioner in academic work or in a product, we would appreciate a citation.
@@ -102,7 +90,7 @@ If you use Cooja Positioner in academic work or in a product, we would appreciat
 **Plain text:**
 
 ```text
-Cooja Positioner. A web tool for generating Cooja simulator position files from geographic coordinates. https://github.com/YOUR_USERNAME/cooja-positioner
+Cooja Positioner. A web tool for generating Cooja simulator position files from geographic coordinates. https://github.com/cooja-positioner-project/cooja-positioner
 ```
 
 **BibTeX:**
@@ -110,11 +98,9 @@ Cooja Positioner. A web tool for generating Cooja simulator position files from 
 ```bibtex
 @misc{cooja-positioner,
   title        = {Cooja Positioner: Geographic to Cooja position file converter},
-  author       = {YOUR_NAME},
-  year         = {2025},
-  howpublished = {\url{https://github.com/YOUR_USERNAME/cooja-positioner}},
+  author       = {Name1,Name2,Name3 and Name4},
+  year         = {2026},
+  howpublished = {\url{https://github.com/cooja-positioner-project/cooja-positioner}},
   note         = {Web tool for generating positions.dat from map input}
 }
 ```
-
-Replace `YOUR_USERNAME` and `YOUR_NAME` with your repository URL and name. Thank you for citing this tool.
