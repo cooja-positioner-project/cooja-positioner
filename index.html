@@ -1131,13 +1131,15 @@
           const latStr = p.lat.toFixed(9); const lngStr = p.lng.toFixed(9);
           return `${nodeId} ${timeStr} ${latStr} ${lngStr} 0.000000000`;
         } else {
-          // Cooja output only: node_id = 0-based index
+          // Cooja: her iki modda da earth listesindeki nodeId - 1 (Fixed: her satır kendi id-1, Mobile: hep aynı id-1)
+          const mapNodeId = p.nodeId || (i + 1);
+          const coojaNodeId = Math.max(0, mapNodeId - 1);
           const center = map.getCenter(); const centerPt = map.project(center, map.getZoom()); 
           const pt = map.project([p.lat,p.lng], map.getZoom()); 
           const metersPerPixel = calcMetersPerPixel(center.lat, map.getZoom()); 
           const dx = (pt.x - centerPt.x) * metersPerPixel; 
           const dy = -(pt.y - centerPt.y) * metersPerPixel;
-          return `${i} ${timeStr} ${dx.toFixed(9)} ${dy.toFixed(9)} 0.000000000`;
+          return `${coojaNodeId} ${timeStr} ${dx.toFixed(9)} ${dy.toFixed(9)} 0.000000000`;
         }
       });
       output.textContent = lines.join('\n');
@@ -1203,10 +1205,12 @@
         y: p.y - offsetY
       }));
       
-      // Format output as Cooja positions.dat: node_id = 0-based index (Cooja only)
+      // Cooja: her iki modda da earth listesindeki nodeId - 1 (Fixed: satır başına kendi id-1, Mobile: hep aynı id-1)
       const outputLines = shiftedPoints.map((p, i) => {
+        const mapNodeId = p.nodeId != null ? p.nodeId : (i + 1);
+        const coojaNodeId = scenario === 'fixed' ? Math.max(0, mapNodeId - 1) : Math.max(0, (shiftedPoints[0].nodeId != null ? shiftedPoints[0].nodeId : 1) - 1);
         const t = scenario === 'fixed' ? 0 : p.time;
-        return `${i} ${t.toFixed(9)} ${p.x.toFixed(9)} ${(-p.y).toFixed(9)} 0.000000000`;
+        return `${coojaNodeId} ${t.toFixed(9)} ${p.x.toFixed(9)} ${(-p.y).toFixed(9)} 0.000000000`;
       });
       
       output.textContent = outputLines.join('\n');
