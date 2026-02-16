@@ -1131,7 +1131,7 @@
           const latStr = p.lat.toFixed(9); const lngStr = p.lng.toFixed(9);
           return `${nodeId} ${timeStr} ${latStr} ${lngStr} 0.000000000`;
         } else {
-          // Cooja: her iki modda da earth listesindeki nodeId - 1 (Fixed: her satır kendi id-1, Mobile: hep aynı id-1)
+          // Cooja: in both modes use earth-list nodeId - 1 (Fixed: each row its own id-1, Mobile: same id-1 on every row)
           const mapNodeId = p.nodeId || (i + 1);
           const coojaNodeId = Math.max(0, mapNodeId - 1);
           const center = map.getCenter(); const centerPt = map.project(center, map.getZoom()); 
@@ -1205,7 +1205,7 @@
         y: p.y - offsetY
       }));
       
-      // Cooja: her iki modda da earth listesindeki nodeId - 1 (Fixed: satır başına kendi id-1, Mobile: hep aynı id-1)
+      // Cooja: in both modes use earth-list nodeId - 1 (Fixed: per row its own id-1, Mobile: same id-1 on every row)
       const outputLines = shiftedPoints.map((p, i) => {
         const mapNodeId = p.nodeId != null ? p.nodeId : (i + 1);
         const coojaNodeId = scenario === 'fixed' ? Math.max(0, mapNodeId - 1) : Math.max(0, (shiftedPoints[0].nodeId != null ? shiftedPoints[0].nodeId : 1) - 1);
