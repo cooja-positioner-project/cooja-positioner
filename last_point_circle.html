@@ -1,0 +1,1473 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>cooja-positioner — OSM (Leaflet) Map Only</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <!-- Leaflet -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <style>
+    html, body { margin: 0; height: 100%; overflow: hidden; font-family: Arial, sans-serif; }
+    #container { display: flex; height: 100%; }
+    #stage { position: relative; flex: 1; overflow: hidden; }
+    #map { position: absolute; inset: 0; z-index: 0; }
+    canvas#grid { position: absolute; inset: 0; z-index: 1; pointer-events: none; }
+
+    #sidebar { width: 340px; padding: 10px; background: #fff; border-left: 1px solid #ccc; display: flex; flex-direction: column; gap: 10px; min-height: 0; overflow-y: scroll; height: 100vh; }
+    #controls label { display: inline-block; width: 110px; }
+    #controls input, #controls select { width: 200px; }
+    .output-container { display: flex; flex-direction: column; flex: 0 0 auto; height: 250px; }
+    #output { flex: 1; overflow-y: scroll; font-family: monospace; white-space: pre; border: 1px solid #ccc; padding: 5px; min-height: 0; }
+    .output-header { display: flex; align-items: center; gap: 8px; }
+    .output-header label { margin: 0; }
+    .input-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .input-header label { margin: 0; }
+    .hint { font-size: 12px; color: #555; line-height: 1.4; }
+    .btnrow { display: flex; gap: 8px; flex-wrap: wrap; }
+    button { padding: 6px 10px; }
+    #uploadInput { display: none; }
+    .toggle-group { display: flex; gap: 0; border: 1px solid #ccc; border-radius: 4px; overflow: hidden; }
+    .toggle-button { flex: 1; padding: 8px 12px; border: none; background: #f5f5f5; color: #333; cursor: pointer; font-size: 14px; transition: all 0.2s; }
+    .toggle-button:first-child { border-right: 1px solid #ccc; }
+    .toggle-button.active { background: #007bff; color: white; font-weight: 600; }
+    .toggle-button:hover:not(.active) { background: #e9ecef; }
+    .toggle-label { font-weight: 600; margin-bottom: 5px; display: block; }
+    .context-menu { display: none; position: fixed; background: white; border: 1px solid #ccc; border-radius: 4px; box-shadow: 0 2px 8px rgba(0,0,0,0.15); z-index: 10000; min-width: 150px; }
+    .context-menu.show { display: block; }
+    .context-menu-item { padding: 8px 16px; cursor: pointer; font-size: 14px; border-bottom: 1px solid #eee; }
+    .context-menu-item:last-child { border-bottom: none; }
+    .context-menu-item:hover { background: #f0f0f0; }
+    .context-menu-item.delete { color: #d32f2f; }
+    
+    /* Keyboard Shortcuts Overlay */
+    .shortcuts-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(4px);
+      z-index: 10000;
+      align-items: center;
+      justify-content: center;
+      animation: fadeIn 0.2s ease-in-out;
+    }
+    
+    .shortcuts-overlay.show {
+      display: flex;
+    }
+    
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    
+    .shortcuts-container {
+      background: rgba(255, 255, 255, 0.95);
+      border-radius: 12px;
+      padding: 30px;
+      max-width: 600px;
+      width: 90%;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+      animation: slideUp 0.3s ease-out;
+    }
+    
+    @keyframes slideUp {
+      from {
+        transform: translateY(20px);
+        opacity: 0;
+      }
+      to {
+        transform: translateY(0);
+        opacity: 1;
+      }
+    }
+    
+    .shortcuts-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 25px;
+      padding-bottom: 15px;
+      border-bottom: 2px solid #e0e0e0;
+    }
+    
+    .shortcuts-header h1 {
+      font-size: 24px;
+      font-weight: 600;
+      color: #333;
+      margin: 0;
+    }
+    
+    .shortcuts-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+    
+    .shortcut-section {
+      margin-bottom: 20px;
+    }
+    
+    .shortcut-section.full-width {
+      grid-column: 1 / -1;
+    }
+    
+    .section-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: #666;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 12px;
+    }
+    
+    .shortcut-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 0;
+      border-bottom: 1px solid #f0f0f0;
+      gap: 12px;
+    }
+    
+    .shortcut-item:last-child {
+      border-bottom: none;
+    }
+    
+    .shortcut-description {
+      font-size: 14px;
+      color: #333;
+      flex: 1;
+    }
+    
+    .shortcut-keys {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+    
+    .key {
+      background: linear-gradient(to bottom, #f5f5f5, #e8e8e8);
+      border: 1px solid #d0d0d0;
+      border-radius: 4px;
+      padding: 6px 12px;
+      font-size: 12px;
+      font-weight: 600;
+      color: #333;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      min-width: 28px;
+      text-align: center;
+      font-family: 'Courier New', monospace;
+    }
+    
+    .key.plus {
+      background: none;
+      border: none;
+      box-shadow: none;
+      padding: 0;
+      min-width: auto;
+      color: #666;
+      font-size: 16px;
+    }
+    
+    .shortcuts-footer {
+      margin-top: 25px;
+      padding-top: 15px;
+      border-top: 2px solid #e0e0e0;
+      text-align: center;
+      font-size: 12px;
+      color: #999;
+    }
+  </style>
+</head>
+<body>
+  <!-- Keyboard Shortcuts Overlay -->
+  <div class="shortcuts-overlay" id="shortcutsOverlay">
+    <div class="shortcuts-container">
+      <div class="shortcuts-header">
+        <h1>Keyboard Shortcuts</h1>
+      </div>
+      
+      <div class="shortcuts-grid">
+        <div class="shortcut-section">
+          <div class="section-title">Selection</div>
+          <div class="shortcut-item">
+            <span class="shortcut-description">Select All</span>
+            <div class="shortcut-keys">
+              <span class="key">Ctrl</span>
+              <span class="key plus">+</span>
+              <span class="key">A</span>
+            </div>
+          </div>
+          <div class="shortcut-item">
+            <span class="shortcut-description">Multiple Selection</span>
+            <div class="shortcut-keys">
+              <span class="key">Ctrl</span>
+              <span class="key plus">+</span>
+              <span class="key">Shift</span>
+              <span class="key plus">+</span>
+              <span class="key">Click</span>
+            </div>
+          </div>
+          <div class="shortcut-item">
+            <span class="shortcut-description">One Selection</span>
+            <div class="shortcut-keys">
+              <span class="key">Click</span>
+            </div>
+          </div>
+        </div>
+        
+        <div class="shortcut-section">
+          <div class="section-title">Editing</div>
+          <div class="shortcut-item">
+            <span class="shortcut-description">Delete Selected</span>
+            <div class="shortcut-keys">
+              <span class="key">Del</span>
+            </div>
+          </div>
+          <div class="shortcut-item">
+            <span class="shortcut-description">Undo</span>
+            <div class="shortcut-keys">
+              <span class="key">Ctrl</span>
+              <span class="key plus">+</span>
+              <span class="key">Z</span>
+            </div>
+          </div>
+          <div class="shortcut-item">
+            <span class="shortcut-description">Redo</span>
+            <div class="shortcut-keys">
+              <span class="key">Ctrl</span>
+              <span class="key plus">+</span>
+              <span class="key">Y</span>
+            </div>
+          </div>
+        </div>
+        
+        <div class="shortcut-section full-width">
+          <div class="section-title">Navigation</div>
+          <div class="shortcut-item">
+            <span class="shortcut-description">Zoom In/Out (Map Mode)</span>
+            <div class="shortcut-keys">
+              <span class="key">Ctrl</span>
+              <span class="key plus">+</span>
+              <span class="key">Mouse Wheel</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="shortcuts-footer">
+        Hold <span class="key">Ctrl</span> + <span class="key">?</span> to show shortcuts
+      </div>
+    </div>
+  </div>
+
+  <div id="container">
+    <div id="stage">
+      <div id="map" aria-label="OpenStreetMap"></div>
+      <canvas id="grid"></canvas>
+    </div>
+
+    <div id="sidebar">
+      <div id="searchContainer">
+        <label for="searchInput"><b>Search Location</b></label>
+        <div style="position: relative;">
+          <input type="text" id="searchInput" placeholder="Enter city, address or place name..." style="width: 100%; padding: 8px; margin-bottom: 5px;">
+          <div id="searchResults" style="position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #ccc; border-top: none; max-height: 200px; overflow-y: auto; z-index: 1000; display: none;"></div>
+        </div>
+      </div>
+
+      <div>
+        <label class="toggle-label"><b>Scenario</b></label>
+        <div class="toggle-group">
+          <button class="toggle-button active" id="scenarioMobile" data-value="mobile">Mobile</button>
+          <button class="toggle-button" id="scenarioFixed" data-value="fixed">Fixed</button>
+        </div>
+      </div>
+
+      <div>
+        <label class="toggle-label"><b>Work Mode</b></label>
+        <div class="toggle-group">
+          <button class="toggle-button active" id="workModeMaps" data-value="maps">Map Mode</button>
+          <button class="toggle-button" id="workModePoint" data-value="point">Point Add</button>
+        </div>
+      </div>
+
+      <div id="controls">
+        <label for="nodeIdInput">Node ID:</label>
+        <input type="number" id="nodeIdInput" value="1"><br><br>
+        <label for="intervalInput">Interval (ms):</label>
+        <input type="number" id="intervalInput" value="1000"><br><br>
+        <label for="circleRadiusSelect">Circle Radius:</label>
+        <select id="circleRadiusSelect">
+          <option value="10" selected>10m</option>
+          <option value="20">20m</option>
+          <option value="30">30m</option>
+          <option value="40">40m</option>
+          <option value="50">50m</option>
+        </select><br><br>
+      </div>
+      <div class="btnrow">
+        <button id="undoBtn" title="Ctrl+Z">Undo</button>
+        <button id="redoBtn" title="Ctrl+Y or Ctrl+Shift+Z">Redo</button>
+        <button id="deleteBtn" title="Del / Backspace">Delete Selected</button>
+        <button id="resetBtn">Reset</button>
+        <input type="file" id="uploadInput" accept=".dat" />
+      </div>
+      <div class="hint">
+        <div style="margin-top: 8px;">
+          <button class="toggle-button active" id="showShortcutsBtn" style="width: 100%;">📋 Keyboard Shortcuts</button>
+        </div>
+      </div>
+      <div>
+        <div class="input-header">
+          <label for="latlngInput"><b>Latitude/Longitude Input</b></label>
+          <button id="uploadBtn">Upload .dat</button>
+        </div>
+        <textarea id="latlngInput" placeholder="&lt;node_id&gt; &lt;time&gt; &lt;latitude&gt; &lt;longitude&gt;&#10;Example:&#10;1 0.0 41.2867 36.33&#10;1 1.0 41.2870 36.331" style="width: 100%; height: 150px; font-family: monospace; font-size: 12px; padding: 5px; border: 1px solid #ccc; resize: vertical;"></textarea>
+        <button id="convertBtn" style="margin-top: 5px; padding: 6px 10px;">
+          Convert to Cooja Positions<span aria-hidden="true" style="margin-left: 6px; font-weight: bold; font-size: 16px; line-height: 1;">⬇</span>
+        </button>
+      </div>
+      <div class="output-container">
+        <div class="output-header">
+          <label for="output"><b>positions.dat</b></label>
+          <button id="saveBtn">Save positions.dat</button>
+        </div>
+        <pre id="output"></pre>
+        <div style="margin-top: 8px; display: flex; justify-content: flex-end;">
+          <button id="copyOutputBtn" title="Copy all content">Copy</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Context Menu -->
+  <div id="contextMenu" class="context-menu">
+    <div class="context-menu-item" id="renameNodeItem">Rename Node-ID</div>
+    <div class="context-menu-item delete" id="deleteNodeItem">Delete</div>
+  </div>
+
+  <script>
+    // === DOM ===
+    const stage = document.getElementById('stage');
+    const canvas = document.getElementById('grid');
+    const ctx = canvas.getContext('2d');
+    const output = document.getElementById('output');
+    const nodeInput = document.getElementById('nodeIdInput');
+    const intervalInput = document.getElementById('intervalInput');
+    const uploadInput = document.getElementById('uploadInput');
+    const uploadBtn = document.getElementById('uploadBtn');
+    const resetBtn = document.getElementById('resetBtn');
+    const saveBtn = document.getElementById('saveBtn');
+    const deleteBtn = document.getElementById('deleteBtn');
+    const undoBtn = document.getElementById('undoBtn');
+    const redoBtn = document.getElementById('redoBtn');
+    const copyOutputBtn = document.getElementById('copyOutputBtn');
+    // exportSelect removed - always use 'xy' format (default)
+    const exportSelect = { value: 'xy' };
+    const circleRadiusSelect = document.getElementById('circleRadiusSelect');
+    const searchInput = document.getElementById('searchInput');
+    const searchResults = document.getElementById('searchResults');
+    const latlngInput = document.getElementById('latlngInput');
+    const convertBtn = document.getElementById('convertBtn');
+    const scenarioMobileBtn = document.getElementById('scenarioMobile');
+    const scenarioFixedBtn = document.getElementById('scenarioFixed');
+    const workModeMapsBtn = document.getElementById('workModeMaps');
+    const workModePointBtn = document.getElementById('workModePoint');
+    const contextMenu = document.getElementById('contextMenu');
+    const renameNodeItem = document.getElementById('renameNodeItem');
+    const deleteNodeItem = document.getElementById('deleteNodeItem');
+
+    // === Cookie Helper Functions ===
+    function setCookie(name, value, days) {
+      const expires = new Date();
+      expires.setTime(expires.getTime() + (days * 24 * 60 * 60 * 1000));
+      document.cookie = `${name}=${value};expires=${expires.toUTCString()};path=/`;
+    }
+
+    function getCookie(name) {
+      const nameEQ = name + "=";
+      const ca = document.cookie.split(';');
+      for (let i = 0; i < ca.length; i++) {
+        let c = ca[i];
+        while (c.charAt(0) === ' ') c = c.substring(1, c.length);
+        if (c.indexOf(nameEQ) === 0) return c.substring(nameEQ.length, c.length);
+      }
+      return null;
+    }
+
+    // === Leaflet Map ===
+    // Load saved location from localStorage/cookie or use default
+    let savedCenter = [0, 0]; // World center as default (universal for global users)
+    let savedZoom = 2; // Wide view to show world map
+    
+    const savedLocationLS = (() => {
+      try { return localStorage.getItem('mapLocation'); } catch { return null; }
+    })();
+    const savedLocationCookie = getCookie('mapLocation');
+    const savedLocation = savedLocationLS || savedLocationCookie;
+
+    if (savedLocation) {
+      try {
+        const parsed = JSON.parse(savedLocation);
+        if (parsed.center && parsed.zoom) {
+          savedCenter = parsed.center;
+          savedZoom = parsed.zoom;
+        }
+      } catch (e) {
+        console.log('Could not parse saved location (localStorage/cookie)');
+      }
+    }
+    console.log('[cookie] Loaded mapLocation:', { center: savedCenter, zoom: savedZoom, source: savedLocationLS ? 'localStorage' : (savedLocationCookie ? 'cookie' : 'default') });
+
+    const map = L.map('map', {
+      center: savedCenter,
+      zoom: savedZoom,
+      zoomControl: true,
+      attributionControl: true
+    });
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+
+    // Save map location to cookie when map is moved or zoomed
+    function saveMapLocation() {
+      const center = map.getCenter();
+      const zoom = map.getZoom();
+      const location = {
+        center: [center.lat, center.lng],
+        zoom: zoom
+      };
+      console.log('[cookie] Saving mapLocation:', location);
+      const payload = JSON.stringify(location);
+      // Save to both localStorage and cookie for robustness (some contexts don't persist cookies well)
+      try { localStorage.setItem('mapLocation', payload); } catch {}
+      setCookie('mapLocation', payload, 365); // Save for 1 year
+    }
+
+    // NOTE: Do NOT auto-save on map navigation. We only save when a point is added.
+
+    // === Styles ===
+    const NODE_STYLE = {
+      fill: 'rgba(0, 122, 255, 0.25)',
+      stroke: 'rgba(0, 92, 205, 0.90)',
+      strokeWidth: 1.25,
+      label: '#111'
+    };
+    const SELECTED_STYLE = { stroke: 'rgba(255,165,0,0.95)', lineWidth: 2.2 };
+
+    // === State ===
+    let mode = 'maps'; // 'maps' | 'point'
+    let scenario = 'mobile'; // 'mobile' | 'fixed'
+    let positions = []; // items: { lat, lng, nodeId }
+    let selected = new Set();
+    let isSelectingRect = false; let selStartS=null, selEndS=null;
+    let draggingNodeIndex = -1; let selectedInitial = null; let preDragSnapshot = null; let dragStartPx = null;
+    let wasDragging = false;
+    let isCtrlSelection = false; // Flag to track if selection was started with Ctrl
+    let lastClickedIndex = -1; // Index of the last clicked point (for drawing circle)
+    let contextMenuNodeIndex = -1; // Index of the node for context menu
+
+    // Undo/Redo
+    const undoStack = []; const redoStack = [];
+    const snapshot = () => JSON.parse(JSON.stringify({ positions }));
+    function commitHistory(){ undoStack.push(snapshot()); if (undoStack.length>200) undoStack.shift(); redoStack.length=0; }
+    function restore(state){ positions = JSON.parse(JSON.stringify(state.positions)); draw(); updateOutput(); }
+
+    // Utils
+    function resize() {
+      const rect = stage.getBoundingClientRect();
+      canvas.width = rect.width; canvas.height = rect.height;
+      draw();
+    }
+    window.addEventListener('resize', resize); resize();
+
+    function nodeRadiusPx(){ 
+      const nodeId = String(parseInt(nodeInput.value) || 1);
+      // Increase radius for longer Node IDs (doubled for better visibility)
+      const baseRadius = 10; // Doubled from 5
+      const idLength = nodeId.length;
+      if (idLength <= 2) return baseRadius;
+      if (idLength <= 3) return baseRadius + 4; // Doubled from +2
+      if (idLength <= 4) return baseRadius + 8; // Doubled from +4
+      return baseRadius + 12; // Doubled from +6, For 5+ digits
+    }
+
+    function fitFontToCircle(text, radiusPx, minPx = 8) {
+      const maxDiameter = radiusPx * 2 * 0.9; let lo=minPx, hi=Math.max(minPx, Math.floor(radiusPx*1.8)), best=lo;
+      while (lo<=hi){ const mid=(lo+hi>>1); ctx.font=`bold ${mid}px Arial`; const m=ctx.measureText(text); const h=(m.actualBoundingBoxAscent||mid*.8)+(m.actualBoundingBoxDescent||mid*.2); const w=m.width; if (w<=maxDiameter && h<=maxDiameter){ best=mid; lo=mid+1;} else hi=mid-1; }
+      return best;
+    }
+
+    function hitTestNodeMap(px, py){ const r = nodeRadiusPx();
+      for (let i=positions.length-1;i>=0;--i){ const p=positions[i]; const pt = map.latLngToContainerPoint([p.lat, p.lng]); const dx=pt.x-px, dy=pt.y-py; if (Math.hypot(dx,dy)<=r) return i; }
+      return -1; }
+
+    // === Scenario Selection ===
+    function updateScenario(value) {
+      scenario = value;
+      scenarioMobileBtn.classList.toggle('active', value === 'mobile');
+      scenarioFixedBtn.classList.toggle('active', value === 'fixed');
+      
+      // If switching to Mobile mode, ensure all nodes have the same nodeId
+      if (value === 'mobile' && positions.length > 0) {
+        commitHistory();
+        const firstNodeId = positions[0].nodeId || 1;
+        positions.forEach(p => {
+          p.nodeId = firstNodeId;
+        });
+        draw();
+        updateOutput();
+        
+        // Update latlngInput
+        const intervalMs = parseFloat(intervalInput.value) || 1000;
+        const lines = positions.map((p, i) => {
+          const nodeId = p.nodeId || (i + 1);
+          const time = scenario === 'fixed' ? '0.000000000' : (i * intervalMs / 1000).toFixed(9);
+          const latStr = p.lat.toFixed(9);
+          const lngStr = p.lng.toFixed(9);
+          return `${nodeId} ${time} ${latStr} ${lngStr}`;
+        });
+        latlngInput.value = lines.join('\n');
+      } else if (value === 'fixed') {
+        // Update output and latlngInput to reflect time=0 for all
+        updateOutput();
+        
+        // Update latlngInput with time=0 for all
+        if (positions.length > 0) {
+          const lines = positions.map((p, i) => {
+            const nodeId = p.nodeId || (i + 1);
+            const time = '0.000000000';
+            const latStr = p.lat.toFixed(9);
+            const lngStr = p.lng.toFixed(9);
+            return `${nodeId} ${time} ${latStr} ${lngStr}`;
+          });
+          latlngInput.value = lines.join('\n');
+        }
+      }
+    }
+    
+    scenarioMobileBtn.addEventListener('click', () => {
+      updateScenario('mobile');
+    });
+    
+    scenarioFixedBtn.addEventListener('click', () => {
+      updateScenario('fixed');
+    });
+
+    // === Mode Selection ===
+    function updateWorkMode(value) {
+      mode = value;
+      workModeMapsBtn.classList.toggle('active', value === 'maps');
+      workModePointBtn.classList.toggle('active', value === 'point');
+      
+      if (mode === 'maps') {
+        // Maps mode: Enable map dragging and zooming
+        map.dragging.enable();
+        map.touchZoom.enable();
+        map.doubleClickZoom.enable();
+        map.scrollWheelZoom.enable();
+        map.boxZoom.enable();
+        map.keyboard.enable();
+      } else if (mode === 'point') {
+        // Point mode: Disable map dragging and zooming
+        map.dragging.disable();
+        map.touchZoom.disable();
+        map.doubleClickZoom.disable();
+        map.scrollWheelZoom.disable();
+        map.boxZoom.disable();
+        map.keyboard.disable();
+      }
+      draw();
+    }
+    
+    workModeMapsBtn.addEventListener('click', () => {
+      updateWorkMode('maps');
+    });
+    
+    workModePointBtn.addEventListener('click', () => {
+      updateWorkMode('point');
+    });
+
+    // Initialize mode
+    updateWorkMode('maps');
+
+    // === Map-mode interactions ===
+    map.on('mousemove', (e)=>{ 
+      if (mode === 'point') {
+        // Node dragging
+        if (draggingNodeIndex >= 0 && selected.size > 0) { 
+          wasDragging = true;
+          const currentLatLng = e.latlng;
+          const startLatLng = [preDragSnapshot.positions[draggingNodeIndex].lat, preDragSnapshot.positions[draggingNodeIndex].lng];
+          const latOffset = currentLatLng.lat - startLatLng[0];
+          const lngOffset = currentLatLng.lng - startLatLng[1];
+          for (const si of selectedInitial) {
+            positions[si.idx].lat = si.lat + latOffset;
+            positions[si.idx].lng = si.lng + lngOffset;
+          }
+          draw();
+        }
+        // Rectangle selection update
+        else if (isSelectingRect && selStartS) {
+          const pt = map.latLngToContainerPoint(e.latlng);
+          selEndS = { x: pt.x, y: pt.y };
+          draw();
+        }
+      }
+    });
+
+    map.on('mousedown', (e)=>{ 
+      // Only allow node editing in point mode
+      if (mode === 'point') {
+        const pt = map.latLngToContainerPoint(e.latlng); 
+        const i = hitTestNodeMap(pt.x, pt.y);
+        
+        // Ctrl + Click: Point selection (single or multi with Shift)
+        if (e.originalEvent.ctrlKey || e.originalEvent.metaKey) {
+          isCtrlSelection = true;
+          if (i >= 0) {
+            // Toggle selection with Shift, replace selection without Shift
+            if (e.originalEvent.shiftKey) {
+              if (selected.has(i)) {
+                selected.delete(i);
+              } else {
+                selected.add(i);
+              }
+            } else {
+              if (!selected.has(i)) {
+                selected.clear();
+                selected.add(i);
+              }
+            }
+            lastClickedIndex = i; // Update last clicked index
+            draw();
+          } else {
+            // Ctrl + Click on empty area: Start rectangle selection
+            isSelectingRect = true;
+            selStartS = { x: pt.x, y: pt.y };
+            selEndS = { x: pt.x, y: pt.y };
+            if (!e.originalEvent.shiftKey) {
+              selected.clear();
+            }
+          }
+        }
+        // Normal Click on selected node: Start dragging
+        else if (i >= 0 && selected.has(i)) {
+          isCtrlSelection = false;
+          draggingNodeIndex = i;
+          preDragSnapshot = snapshot();
+          selectedInitial = Array.from(selected).map(idx => ({ 
+            idx, 
+            lat: positions[idx].lat, 
+            lng: positions[idx].lng 
+          }));
+          dragStartPx = map.latLngToContainerPoint([positions[i].lat, positions[i].lng]);
+          wasDragging = false;
+          map.dragging.disable();
+        }
+        // Normal Click on empty area: Prepare for point addition
+        else {
+          isCtrlSelection = false;
+          isSelectingRect = true;
+          selStartS = { x: pt.x, y: pt.y };
+          selEndS = { x: pt.x, y: pt.y };
+          window.mouseDownLatLng = e.latlng;
+        }
+      }
+    });
+
+    map.on('mouseup', (e)=>{ 
+      if (mode === 'point') {
+        if (draggingNodeIndex >= 0) {
+          // Finish dragging
+          const before = JSON.stringify(preDragSnapshot.positions); 
+          const after = JSON.stringify(positions); 
+          if (before !== after) commitHistory(); 
+        }
+        else if (isSelectingRect) {
+          const dx = Math.abs(selEndS.x - selStartS.x);
+          const dy = Math.abs(selEndS.y - selStartS.y); 
+          const dragged = (dx + dy) > 4;
+          
+          // Ctrl + Rectangle selection: Select points in rectangle
+          if (isCtrlSelection) {
+            if (dragged) {
+              const minX = Math.min(selStartS.x, selEndS.x);
+              const maxX = Math.max(selStartS.x, selEndS.x); 
+              const minY = Math.min(selStartS.y, selEndS.y);
+              const maxY = Math.max(selStartS.y, selEndS.y); 
+              
+              // Add to selection if Shift, replace if not
+              if (!e.originalEvent.shiftKey) {
+                selected.clear();
+              }
+              
+              positions.forEach((p, idx) => { 
+                const s = map.latLngToContainerPoint([p.lat, p.lng]); 
+                if (s.x >= minX && s.x <= maxX && s.y >= minY && s.y <= maxY) {
+                  selected.add(idx);
+                }
+              });
+              draw();
+            }
+          }
+          // Normal Click: Add new point
+          else if (window.mouseDownLatLng && !dragged) {
+            commitHistory(); 
+            const lat = window.mouseDownLatLng.lat;
+            const lng = window.mouseDownLatLng.lng;
+            
+            // Calculate next nodeId based on scenario
+            let nextNodeId;
+            if (scenario === 'mobile') {
+              // Mobile mode: Use the same nodeId for all nodes
+              if (positions.length > 0) {
+                nextNodeId = positions[0].nodeId || parseInt(nodeInput.value) || 1;
+              } else {
+                nextNodeId = parseInt(nodeInput.value) || 1;
+              }
+            } else {
+              // Fixed mode: Increment nodeId for each new node
+              nextNodeId = parseInt(nodeInput.value) || 1;
+              if (positions.length > 0) {
+                const maxNodeId = Math.max(...positions.map(p => p.nodeId || 1));
+                nextNodeId = maxNodeId + 1;
+              }
+            }
+            
+            positions.push({ lat, lng, nodeId: nextNodeId }); 
+            selected.clear(); 
+            selected.add(positions.length - 1); 
+            lastClickedIndex = positions.length - 1; // Update last clicked index
+            
+            const nodeId = nextNodeId;
+            const intervalMs = parseFloat(intervalInput.value) || 1000;
+            // Fixed mode: time is always 0, Mobile mode: use interval-based time
+            const time = scenario === 'fixed' ? '0.000000000' : ((positions.length - 1) * intervalMs / 1000).toFixed(9);
+            
+            const latStr = lat.toFixed(9);
+            const lngStr = lng.toFixed(9);
+            const newLine = `${nodeId} ${time} ${latStr} ${lngStr}`;
+            
+            if (latlngInput.value.trim()) {
+              latlngInput.value += '\n' + newLine;
+            } else {
+              latlngInput.value = newLine;
+            }
+            
+            // Scroll to bottom
+            latlngInput.scrollTop = latlngInput.scrollHeight;
+            
+            // Save map location to cookie when adding a point
+            saveMapLocation();
+
+            draw(); 
+          }
+        }
+      }
+      
+      // Re-enable dragging only in maps mode
+      if (mode === 'maps') {
+        map.dragging.enable();
+      }
+      
+      // Reset state
+      draggingNodeIndex = -1;
+      selectedInitial = null;
+      preDragSnapshot = null; 
+      isSelectingRect = false;
+      selStartS = selEndS = null; 
+      window.mouseDownLatLng = null;
+      isCtrlSelection = false;
+      setTimeout(() => { wasDragging = false; }, 50);
+      draw(); 
+    });
+
+    map.on('move zoom', ()=>{ 
+      requestAnimationFrame(() => {
+        draw();
+      });
+    });
+    
+    map.on('zoomend', ()=>{ 
+      draw();
+    });
+
+    // Context menu on right click
+    map.on('contextmenu', (e) => {
+      e.originalEvent.preventDefault();
+      if (mode !== 'point') return;
+      
+      const pt = map.latLngToContainerPoint(e.latlng);
+      const i = hitTestNodeMap(pt.x, pt.y);
+      
+      if (i >= 0) {
+        contextMenuNodeIndex = i;
+        selected.clear();
+        selected.add(i);
+        lastClickedIndex = i;
+        draw();
+        
+        // Show context menu at mouse position
+        contextMenu.style.left = e.originalEvent.clientX + 'px';
+        contextMenu.style.top = e.originalEvent.clientY + 'px';
+        contextMenu.classList.add('show');
+      } else {
+        contextMenu.classList.remove('show');
+      }
+    });
+
+    // Close context menu when clicking elsewhere
+    document.addEventListener('click', (e) => {
+      if (!contextMenu.contains(e.target)) {
+        contextMenu.classList.remove('show');
+      }
+    });
+
+    // Context menu actions
+    renameNodeItem.addEventListener('click', () => {
+      if (contextMenuNodeIndex >= 0 && contextMenuNodeIndex < positions.length) {
+        const position = positions[contextMenuNodeIndex];
+        const currentId = position.nodeId || (contextMenuNodeIndex + 1);
+        const newId = prompt('Enter new Node ID:', currentId);
+        if (newId !== null && !isNaN(parseInt(newId))) {
+          commitHistory();
+          const newNodeId = parseInt(newId);
+          
+          if (scenario === 'mobile') {
+            // Mobile mode: Update all nodes to have the same nodeId
+            positions.forEach(p => {
+              p.nodeId = newNodeId;
+            });
+          } else {
+            // Fixed mode: Update only the selected node
+            positions[contextMenuNodeIndex].nodeId = newNodeId;
+          }
+          
+          // Update latlngInput to reflect the new Node ID
+          const intervalMs = parseFloat(intervalInput.value) || 1000;
+          const lines = positions.map((p, i) => {
+            const nodeId = p.nodeId || (i + 1);
+            const time = scenario === 'fixed' ? '0.000000000' : (i * intervalMs / 1000).toFixed(9);
+            const latStr = p.lat.toFixed(9);
+            const lngStr = p.lng.toFixed(9);
+            return `${nodeId} ${time} ${latStr} ${lngStr}`;
+          });
+          latlngInput.value = lines.join('\n');
+          
+          draw();
+          updateOutput();
+        }
+      }
+      contextMenu.classList.remove('show');
+    });
+
+    deleteNodeItem.addEventListener('click', () => {
+      if (contextMenuNodeIndex >= 0) {
+        selected.clear();
+        selected.add(contextMenuNodeIndex);
+        deleteSelected();
+      }
+      contextMenu.classList.remove('show');
+    });
+
+    // Add Ctrl+mouse wheel zoom functionality (only in maps mode)
+    map.getContainer().addEventListener('wheel', (e) => {
+      if (mode === 'maps' && e.ctrlKey) {
+        e.preventDefault();
+        const rect = map.getContainer().getBoundingClientRect();
+        const mouseX = e.clientX - rect.left;
+        const mouseY = e.clientY - rect.top;
+        const mouseLatLng = map.containerPointToLatLng([mouseX, mouseY]);
+        const zoomIn = e.deltaY < 0;
+        const currentZoom = map.getZoom();
+        const newZoom = zoomIn ? currentZoom + 1 : currentZoom - 1;
+        const clampedZoom = Math.max(1, Math.min(19, newZoom));
+        map.setView(mouseLatLng, clampedZoom);
+      }
+    }, { passive: false });
+
+    // Keyboard
+    window.addEventListener('keydown', (e)=>{
+      if ((e.key === 'Backspace' || e.key === 'Delete')) { e.preventDefault(); deleteSelected(); }
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase()==='a'){ e.preventDefault(); selected = new Set(positions.map((_,idx)=>idx)); draw(); }
+      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase()==='z'){ e.preventDefault(); undo(); }
+      else if ((e.ctrlKey || e.metaKey) && (e.key.toLowerCase()==='y' || (e.shiftKey && e.key.toLowerCase()==='z'))){ e.preventDefault(); redo(); }
+    });
+
+    function undo(){ if (!undoStack.length) return; const curr=snapshot(); const prev=undoStack.pop(); redoStack.push(curr); restore(prev); }
+    function redo(){ if (!redoStack.length) return; const curr=snapshot(); const next=redoStack.pop(); undoStack.push(curr); restore(next); }
+
+    function deleteSelected(){ 
+      if (!selected.size) return; 
+      commitHistory(); 
+      // Update lastClickedIndex if deleted point was the last clicked
+      if (selected.has(lastClickedIndex)) {
+        lastClickedIndex = -1;
+      } else if (lastClickedIndex >= 0) {
+        // Adjust lastClickedIndex if points before it were deleted
+        let adjustment = 0;
+        for (let i = 0; i < lastClickedIndex; i++) {
+          if (selected.has(i)) adjustment++;
+        }
+        lastClickedIndex -= adjustment;
+      }
+      positions = positions.filter((_,idx)=>!selected.has(idx)); 
+      selected.clear(); 
+      
+      // Update latlngInput to match remaining positions
+      if (positions.length === 0) {
+        latlngInput.value = '';
+      } else {
+        const intervalMs = parseFloat(intervalInput.value) || 1000;
+        const lines = positions.map((p, i) => {
+          const nodeId = p.nodeId || (i + 1);
+          const time = scenario === 'fixed' ? '0.000000000' : (i * intervalMs / 1000).toFixed(9);
+          const latStr = p.lat.toFixed(9);
+          const lngStr = p.lng.toFixed(9);
+          return `${nodeId} ${time} ${latStr} ${lngStr}`;
+        });
+        latlngInput.value = lines.join('\n');
+      }
+      
+      draw(); 
+      updateOutput(); 
+    }
+
+    resetBtn.addEventListener('click', ()=>{ commitHistory(); positions = []; selected.clear(); lastClickedIndex = -1; latlngInput.value = ''; updateOutput(); draw(); });
+    saveBtn.addEventListener('click', ()=>{ const blob = new Blob([output.textContent], { type: 'text/plain' }); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='positions.dat'; a.click(); });
+    uploadBtn.addEventListener('click', ()=>{ uploadInput.click(); });
+    copyOutputBtn.addEventListener('click', async ()=>{ 
+      try {
+        await navigator.clipboard.writeText(output.textContent);
+        const originalText = copyOutputBtn.textContent;
+        copyOutputBtn.textContent = 'Copied!';
+        copyOutputBtn.style.backgroundColor = '#4CAF50';
+        copyOutputBtn.style.color = 'white';
+        setTimeout(() => {
+          copyOutputBtn.textContent = originalText;
+          copyOutputBtn.style.backgroundColor = '';
+          copyOutputBtn.style.color = '';
+        }, 2000);
+      } catch (err) {
+        console.error('Copy failed:', err);
+        // Fallback for older browsers
+        const textArea = document.createElement('textarea');
+        textArea.value = output.textContent;
+        textArea.style.position = 'fixed';
+        textArea.style.opacity = '0';
+        document.body.appendChild(textArea);
+        textArea.select();
+        try {
+          document.execCommand('copy');
+          const originalText = copyOutputBtn.textContent;
+          copyOutputBtn.textContent = 'Copied!';
+          copyOutputBtn.style.backgroundColor = '#4CAF50';
+          copyOutputBtn.style.color = 'white';
+          setTimeout(() => {
+            copyOutputBtn.textContent = originalText;
+            copyOutputBtn.style.backgroundColor = '';
+            copyOutputBtn.style.color = '';
+          }, 2000);
+        } catch (fallbackErr) {
+          console.error('Fallback copy failed:', fallbackErr);
+          alert('Copy failed. Please select and copy the content manually.');
+        }
+        document.body.removeChild(textArea);
+      }
+    });
+
+    uploadInput.addEventListener('change', (e)=>{ const file=e.target.files[0]; if (!file) return; const reader=new FileReader(); reader.onload=(evt)=>{
+        commitHistory(); const lines = evt.target.result.split(/\r?\n/); positions=[]; 
+        let firstNodeId = null;
+        for (let lineIdx = 0; lineIdx < lines.length; lineIdx++){ 
+          const line = lines[lineIdx];
+          if (!line.trim()) continue; 
+          const parts=line.trim().split(/\s+/); 
+          if (parts.length<4) continue; 
+          let nodeId = parseInt(parts[0]) || (lineIdx + 1);
+          // Mobile mode: Use first node's ID for all nodes
+          if (scenario === 'mobile') {
+            if (firstNodeId === null) {
+              firstNodeId = nodeId;
+            } else {
+              nodeId = firstNodeId;
+            }
+          }
+          const x=parseFloat(parts[2]); 
+          const y=parseFloat(parts[3]); 
+          if (exportSelect.value==='latlng'){ 
+            positions.push({ lat:x, lng:y, nodeId }); 
+          } else {
+            const center = map.getCenter(); const centerPt = map.project(center, map.getZoom()); 
+            const metersPerPixel = calcMetersPerPixel(center.lat, map.getZoom()); 
+            const dx = x / metersPerPixel; const dy = -y / metersPerPixel; 
+            const targetPt = L.point(centerPt.x + dx, centerPt.y + dy); 
+            const ll = map.unproject(targetPt, map.getZoom()); 
+            positions.push({ lat: ll.lat, lng: ll.lng, nodeId }); 
+          }
+        }
+        selected.clear(); lastClickedIndex = -1; 
+        
+        // Update latlngInput with correct times based on scenario
+        if (positions.length > 0) {
+          const intervalMs = parseFloat(intervalInput.value) || 1000;
+          const lines = positions.map((p, i) => {
+            const nodeId = p.nodeId || (i + 1);
+            const time = scenario === 'fixed' ? '0.000000000' : (i * intervalMs / 1000).toFixed(9);
+            const latStr = p.lat.toFixed(9);
+            const lngStr = p.lng.toFixed(9);
+            return `${nodeId} ${time} ${latStr} ${lngStr}`;
+          });
+          latlngInput.value = lines.join('\n');
+        }
+        
+        updateOutput(); draw(); };
+      reader.readAsText(file);
+    });
+
+    function calcMetersPerPixel(lat, zoom){ const earthCircumference = 40075016.686; return Math.cos(lat*Math.PI/180) * earthCircumference / Math.pow(2, zoom+8); }
+
+    function draw(){
+      const rect = stage.getBoundingClientRect();
+      if (canvas.width !== rect.width || canvas.height !== rect.height) {
+        canvas.width = rect.width;
+        canvas.height = rect.height;
+      }
+      ctx.clearRect(0,0,canvas.width, canvas.height);
+
+      const rPx = nodeRadiusPx(); let index=1; 
+      if (positions.length>1){ 
+        ctx.beginPath(); ctx.strokeStyle='blue'; ctx.lineWidth=1.5; 
+        let s = map.latLngToContainerPoint([positions[0].lat, positions[0].lng]); 
+        ctx.moveTo(s.x, s.y); 
+        for (let i=1;i<positions.length;i++){ 
+          s = map.latLngToContainerPoint([positions[i].lat, positions[i].lng]); 
+          ctx.lineTo(s.x, s.y);
+        } 
+        ctx.stroke(); 
+      }
+      for (let i=0;i<positions.length;i++){ 
+        const p=positions[i]; 
+        const s=map.latLngToContainerPoint([p.lat, p.lng]); 
+        const nodeId = p.nodeId || (i + 1);
+        const nodeIdStr = String(nodeId);
+        const baseRadius = 10; // Doubled from 5
+        const idLength = nodeIdStr.length;
+        let nodeRadius = baseRadius;
+        if (idLength <= 2) nodeRadius = baseRadius;
+        else if (idLength <= 3) nodeRadius = baseRadius + 4; // Doubled from +2
+        else if (idLength <= 4) nodeRadius = baseRadius + 8; // Doubled from +4
+        else nodeRadius = baseRadius + 12; // Doubled from +6
+        drawNodeCircle(s.x, s.y, nodeRadius, i+1); 
+      }
+      // Draw circle around last clicked point
+      if (lastClickedIndex >= 0 && lastClickedIndex < positions.length) {
+        const lastPoint = positions[lastClickedIndex];
+        const centerPx = map.latLngToContainerPoint([lastPoint.lat, lastPoint.lng]);
+        const metersPerPixel = calcMetersPerPixel(lastPoint.lat, map.getZoom());
+        const radiusMeters = parseFloat(circleRadiusSelect.value) || 10;
+        const radiusPx = radiusMeters / metersPerPixel; // Convert meters to pixels
+        
+        ctx.save();
+        ctx.beginPath();
+        ctx.strokeStyle = 'rgba(220, 130, 0, 0.9)'; // Darker orange (darker version of selected color)
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([5, 5]); // Dashed line pattern
+        ctx.arc(centerPx.x, centerPx.y, radiusPx, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+      }
+      if (isSelectingRect && selStartS && selEndS){ drawSelectionRect(selStartS.x, selStartS.y, selEndS.x, selEndS.y); }
+    }
+
+    function drawNodeCircle(cx, cy, rPx, index){ 
+      ctx.beginPath(); ctx.fillStyle=NODE_STYLE.fill; ctx.strokeStyle=NODE_STYLE.stroke; ctx.lineWidth=NODE_STYLE.strokeWidth; 
+      ctx.arc(cx, cy, rPx, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+      const idx=index-1; if (selected.has(idx)){ 
+        ctx.beginPath(); ctx.strokeStyle=SELECTED_STYLE.stroke; ctx.lineWidth=SELECTED_STYLE.lineWidth; 
+        ctx.arc(cx, cy, rPx+2, 0, Math.PI*2); ctx.stroke(); 
+      }
+      // Use Node ID from position object
+      const position = positions[idx];
+      const nodeId = position && position.nodeId ? String(position.nodeId) : String(idx + 1);
+      const label = nodeId;
+      const fontSize=fitFontToCircle(label, rPx, 16); // Doubled from 8 
+      ctx.font=`bold ${fontSize}px Arial`; ctx.fillStyle=NODE_STYLE.label; ctx.textAlign='center'; ctx.textBaseline='middle'; 
+      ctx.fillText(label, cx, cy); 
+    }
+
+    function drawSelectionRect(x1,y1,x2,y2){ 
+      const x=Math.min(x1,x2), y=Math.min(y1,y2), w=Math.abs(x2-x1), h=Math.abs(y2-y1); 
+      ctx.save(); ctx.fillStyle='rgba(0,120,215,0.15)'; ctx.strokeStyle='rgba(0,120,215,0.9)'; ctx.lineWidth=1.2; 
+      ctx.fillRect(x,y,w,h); ctx.strokeRect(x,y,w,h); ctx.restore(); 
+    }
+
+    function updateOutput(){
+      const intervalMs=parseFloat(intervalInput.value)||1000;
+      if (positions.length === 0) {
+        // Show placeholder when no positions
+        if (exportSelect.value === 'latlng') {
+          output.textContent = '<node_id> <time> <latitude> <longitude> <z>\n\nExample:\n1 0.000000000 41.2867 36.33 0.000000000\n1 1.000000000 41.2870 36.331 0.000000000';
+        } else {
+          output.textContent = '<node_id> <time> <x> <y> <z>\n\nExample:\n1 0.000000000 0.000000000 0.000000000 0.000000000\n1 1.000000000 10.000000000 20.000000000 0.000000000';
+        }
+        output.style.color = '#999';
+        return; 
+      }
+      output.style.color = '';
+      const lines = positions.map((p,i)=>{
+        const nodeId = p.nodeId || (i + 1); // Use nodeId from position, or fallback to index+1
+        // Fixed mode: time is always 0, Mobile mode: time increments
+        const timeStr = scenario === 'fixed' ? '0.000000000' : (i*intervalMs/1000).toFixed(9);
+        if (exportSelect.value==='latlng'){
+          const latStr = p.lat.toFixed(9); const lngStr = p.lng.toFixed(9);
+          return `${nodeId} ${timeStr} ${latStr} ${lngStr} 0.000000000`;
+        } else {
+          // Cooja: in both modes use earth-list nodeId - 1 (Fixed: each row its own id-1, Mobile: same id-1 on every row)
+          const mapNodeId = p.nodeId || (i + 1);
+          const coojaNodeId = Math.max(0, mapNodeId - 1);
+          const center = map.getCenter(); const centerPt = map.project(center, map.getZoom()); 
+          const pt = map.project([p.lat,p.lng], map.getZoom()); 
+          const metersPerPixel = calcMetersPerPixel(center.lat, map.getZoom()); 
+          const dx = (pt.x - centerPt.x) * metersPerPixel; 
+          const dy = -(pt.y - centerPt.y) * metersPerPixel;
+          return `${coojaNodeId} ${timeStr} ${dx.toFixed(9)} ${dy.toFixed(9)} 0.000000000`;
+        }
+      });
+      output.textContent = lines.join('\n');
+    }
+
+    // exportSelect removed - no change event  needed
+    circleRadiusSelect.addEventListener('change', () => { draw(); });
+
+    convertBtn.addEventListener('click', () => {
+      // Parse lat/lng input
+      const text = latlngInput.value.trim();
+      if (!text) {
+        updateOutput();
+        return;
+      }
+      
+      const lines = text.split(/\r?\n/);
+      const parsedPoints = [];
+      
+      // Parse all lines
+      for (const line of lines) {
+        if (!line.trim()) continue;
+        const parts = line.trim().split(/\s+/);
+        if (parts.length < 4) continue;
+        
+        const nodeId = parseInt(parts[0]) || 1;
+        const time = parseFloat(parts[1]) || 0;
+        const lat = parseFloat(parts[2]);
+        const lng = parseFloat(parts[3]);
+        
+        if (isNaN(lat) || isNaN(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) continue;
+        
+        parsedPoints.push({ nodeId, time, lat, lng });
+      }
+      
+      if (parsedPoints.length === 0) {
+        updateOutput();
+        return;
+      }
+      
+      // Convert all points to XY meters (relative to map center)
+      const center = map.getCenter();
+      const centerPt = map.project(center, map.getZoom());
+      const metersPerPixel = calcMetersPerPixel(center.lat, map.getZoom());
+      
+      const xyPoints = parsedPoints.map(p => {
+        const pt = map.project([p.lat, p.lng], map.getZoom());
+        const dx = (pt.x - centerPt.x) * metersPerPixel;
+        const dy = -(pt.y - centerPt.y) * metersPerPixel;
+        return { nodeId: p.nodeId, time: p.time, x: dx, y: dy };
+      });
+      
+      // Get first point's XY coordinates (this will be the new center)
+      const firstPoint = xyPoints[0];
+      const offsetX = firstPoint.x;
+      const offsetY = firstPoint.y;
+      
+      // Shift all points so first point becomes (0, 0)
+      const shiftedPoints = xyPoints.map(p => ({
+        nodeId: p.nodeId,
+        time: p.time,
+        x: p.x - offsetX,
+        y: p.y - offsetY
+      }));
+      
+      // Cooja: in both modes use earth-list nodeId - 1 (Fixed: per row its own id-1, Mobile: same id-1 on every row)
+      const outputLines = shiftedPoints.map((p, i) => {
+        const mapNodeId = p.nodeId != null ? p.nodeId : (i + 1);
+        const coojaNodeId = scenario === 'fixed' ? Math.max(0, mapNodeId - 1) : Math.max(0, (shiftedPoints[0].nodeId != null ? shiftedPoints[0].nodeId : 1) - 1);
+        const t = scenario === 'fixed' ? 0 : p.time;
+        return `${coojaNodeId} ${t.toFixed(9)} ${p.x.toFixed(9)} ${(-p.y).toFixed(9)} 0.000000000`;
+      });
+      
+      output.textContent = outputLines.join('\n');
+    });
+
+    let latlngInputTimeout;
+    latlngInput.addEventListener('input', (e) => {
+      const text = e.target.value.trim();
+      
+      // Clear timeout if user is still typing
+      if (latlngInputTimeout) clearTimeout(latlngInputTimeout);
+      
+      // Debounce: wait 300ms after user stops typing
+      latlngInputTimeout = setTimeout(() => {
+        if (!text) {
+          // If textarea is empty, clear positions
+          commitHistory();
+          positions = [];
+          selected.clear();
+          lastClickedIndex = -1;
+          draw();
+          updateOutput();
+          return;
+        }
+        
+        const lines = text.split(/\r?\n/);
+        const parsedLines = [];
+        let firstNodeId = null;
+        for (const line of lines) {
+          if (!line.trim()) continue;
+          const parts = line.trim().split(/\s+/);
+          if (parts.length < 4) continue;
+          let nodeId = parseInt(parts[0]);
+          const time = parseFloat(parts[1]);
+          const lat = parseFloat(parts[2]);
+          const lng = parseFloat(parts[3]);
+          if (isNaN(lat) || isNaN(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) continue;
+          if (isNaN(nodeId)) continue;
+          
+          // Mobile mode: Use first node's ID for all nodes
+          if (scenario === 'mobile') {
+            if (firstNodeId === null) {
+              firstNodeId = nodeId;
+            } else {
+              nodeId = firstNodeId;
+            }
+          }
+          
+          // Fixed mode: time is always 0
+          const finalTime = scenario === 'fixed' ? 0 : time;
+          parsedLines.push({ nodeId, time: finalTime, lat, lng });
+        }
+        
+        if (parsedLines.length > 0) {
+          commitHistory();
+          
+          // Update existing positions or create new ones
+          // Match by lat/lng with tolerance
+          const tolerance = 0.000001; // ~0.1 meter
+          const updatedPositions = [];
+          const usedIndices = new Set();
+          
+          // First, try to match parsed lines with existing positions
+          for (const parsed of parsedLines) {
+            let matched = false;
+            for (let i = 0; i < positions.length; i++) {
+              if (usedIndices.has(i)) continue;
+              const existing = positions[i];
+              const latDiff = Math.abs(existing.lat - parsed.lat);
+              const lngDiff = Math.abs(existing.lng - parsed.lng);
+              if (latDiff < tolerance && lngDiff < tolerance) {
+                // Match found - update nodeId
+                updatedPositions.push({ lat: existing.lat, lng: existing.lng, nodeId: parsed.nodeId });
+                usedIndices.add(i);
+                matched = true;
+                break;
+              }
+            }
+            if (!matched) {
+              // No match - add as new position
+              updatedPositions.push({ lat: parsed.lat, lng: parsed.lng, nodeId: parsed.nodeId });
+            }
+          }
+          
+          // Mobile mode: Ensure all nodes have the same nodeId (use first node's ID)
+          if (scenario === 'mobile' && updatedPositions.length > 0) {
+            const firstNodeId = updatedPositions[0].nodeId;
+            updatedPositions.forEach(p => {
+              p.nodeId = firstNodeId;
+            });
+          }
+          
+          positions = updatedPositions;
+          
+          // Update latlngInput to reflect correct nodeIds and times based on scenario
+          const intervalMs = parseFloat(intervalInput.value) || 1000;
+          const formattedLines = positions.map((p, i) => {
+            const nodeId = p.nodeId || (i + 1);
+            // Fixed mode: time is always 0
+            // Mobile mode: use interval-based time
+            let time;
+            if (scenario === 'fixed') {
+              time = '0.000000000';
+            } else {
+              time = (i * intervalMs / 1000).toFixed(9);
+            }
+            const latStr = p.lat.toFixed(9);
+            const lngStr = p.lng.toFixed(9);
+            return `${nodeId} ${time} ${latStr} ${lngStr}`;
+          });
+          // Force update latlngInput even if scenario is fixed
+          latlngInput.value = formattedLines.join('\n');
+          selected.clear();
+          lastClickedIndex = -1;
+          
+          // Auto-fit map to show all points
+          if (positions.length > 0) {
+            const bounds = L.latLngBounds(positions.map(p => [p.lat, p.lng]));
+            map.fitBounds(bounds, { padding: [50, 50], maxZoom: 18 });
+          }
+          
+          draw();
+          updateOutput();
+        } else if (text) {
+          // Text exists but no valid positions found - clear positions
+          commitHistory();
+          positions = [];
+          selected.clear();
+          lastClickedIndex = -1;
+          draw();
+          updateOutput();
+        }
+      }, 300);
+    });
+
+    // === Search Functionality ===
+    let searchTimeout;
+    let currentSearchResults = [];
+
+    searchInput.addEventListener('input', (e) => {
+      const query = e.target.value.trim();
+      if (searchTimeout) clearTimeout(searchTimeout);
+      if (query.length === 0) { searchResults.style.display = 'none'; return; }
+      searchTimeout = setTimeout(() => { searchLocation(query); }, 300);
+    });
+
+    document.addEventListener('click', (e) => {
+      if (!searchInput.contains(e.target) && !searchResults.contains(e.target)) {
+        searchResults.style.display = 'none';
+      }
+    });
+
+    async function searchLocation(query) {
+      try {
+        const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&addressdetails=1&countrycodes=tr`);
+        const results = await response.json();
+        currentSearchResults = results;
+        displaySearchResults(results);
+      } catch (error) {
+        console.error('Search error:', error);
+        searchResults.innerHTML = '<div style="padding: 10px; color: red;">An error occurred during search</div>';
+        searchResults.style.display = 'block';
+      }
+    }
+
+    function displaySearchResults(results) {
+      if (results.length === 0) {
+        searchResults.innerHTML = '<div style="padding: 10px; color: #666;">No results found</div>';
+        searchResults.style.display = 'block';
+        return;
+      }
+      searchResults.innerHTML = results.map((result, index) => {
+        const displayName = result.display_name.split(',').slice(0, 3).join(',');
+        return `<div class="search-result-item" data-index="${index}" style="padding: 8px; cursor: pointer; border-bottom: 1px solid #eee; font-size: 13px;">
+          <div style="font-weight: bold;">${result.display_name.split(',')[0]}</div>
+          <div style="color: #666; font-size: 11px;">${displayName}</div>
+        </div>`;
+      }).join('');
+      searchResults.querySelectorAll('.search-result-item').forEach(item => {
+        item.addEventListener('click', () => {
+          const index = parseInt(item.dataset.index);
+          selectSearchResult(index);
+        });
+        item.addEventListener('mouseenter', () => { item.style.backgroundColor = '#f0f0f0'; });
+        item.addEventListener('mouseleave', () => { item.style.backgroundColor = 'white'; });
+      });
+      searchResults.style.display = 'block';
+    }
+
+    function selectSearchResult(index) {
+      const result = currentSearchResults[index];
+      if (result) {
+        const lat = parseFloat(result.lat);
+        const lng = parseFloat(result.lon);
+        map.setView([lat, lng], 15);
+        searchInput.value = result.display_name.split(',')[0];
+        searchResults.style.display = 'none';
+      }
+    }
+
+    // initial draw
+    draw(); updateOutput();
+
+    // === Keyboard Shortcuts Overlay ===
+    const shortcutsOverlay = document.getElementById('shortcutsOverlay');
+    let ctrlPressed = false;
+    let questionMarkPressed = false;
+
+    // Show overlay when Ctrl + ? is pressed
+    document.addEventListener('keydown', (e) => {
+      // Check for Ctrl (or Cmd on Mac)
+      if (e.ctrlKey || e.metaKey) {
+        ctrlPressed = true;
+        
+        // Check for ? (Shift + / on most keyboards, or Shift + . on Turkish)
+        if (e.key === '?' || (e.shiftKey && e.key === '/')) {
+          questionMarkPressed = true;
+          if (ctrlPressed && questionMarkPressed) {
+            e.preventDefault();
+            shortcutsOverlay.classList.add('show');
+          }
+        }
+      }
+    });
+
+    // Hide overlay when Ctrl or ? is released
+    document.addEventListener('keyup', (e) => {
+      if (e.key === 'Control' || e.key === 'Meta') {
+        ctrlPressed = false;
+        if (!ctrlPressed || !questionMarkPressed) {
+          shortcutsOverlay.classList.remove('show');
+        }
+      }
+      
+      if (e.key === '?' || (e.shiftKey && e.key === '/')) {
+        questionMarkPressed = false;
+        if (!ctrlPressed || !questionMarkPressed) {
+          shortcutsOverlay.classList.remove('show');
+        }
+      }
+    });
+
+    // Also hide overlay when clicking outside
+    shortcutsOverlay.addEventListener('click', (e) => {
+      if (e.target === shortcutsOverlay) {
+        shortcutsOverlay.classList.remove('show');
+      }
+    });
+
+    // Show shortcuts button click handler
+    const showShortcutsBtn = document.getElementById('showShortcutsBtn');
+    if (showShortcutsBtn) {
+      showShortcutsBtn.addEventListener('click', () => {
+        shortcutsOverlay.classList.add('show');
+      });
+    }
+  </script>
+</body>
+</html>
+
