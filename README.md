@@ -39,6 +39,9 @@ A web tool that converts geographic coordinates (latitude/longitude) into [Cooja
 
 ## 🎥 How to use it ?
 
+<video src='https://raw.githubusercontent.com/cooja-positioner-project/cooja-positioner/main/Cooja%20positioner_%20An%20Interactive%20Web-Based%20Tool%20for%20Node%20Positioning%20in%20the%20Cooja%20Simulator.mp4' width=720/>
+
+
 <video controls width="720">
   <source src="https://raw.githubusercontent.com/cooja-positioner-project/cooja-positioner/main/Cooja%20positioner_%20An%20Interactive%20Web-Based%20Tool%20for%20Node%20Positioning%20in%20the%20Cooja%20Simulator.mp4" type="video/mp4">
 </video>
