@@ -1,0 +1,33 @@
+# OS/editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Local secrets and dependency caches
+.env
+.env.*
+node_modules/
+
+# Generated test coverage and temporary output
+coverage/
+tmp/
+*.tmp
+
+# LaTeX build products
+*.aux
+*.fdb_latexmk
+*.fls
+*.log
+!integrations/results/cooja-runtime/*.log
+*.out
+*.synctex.gz
+_minted-*/
+
+# Local research/draft material not distributed with the software repository
+NEW_ACCESS_LATEX_TEMPLATE/
+SoftwareX_Rejected_Paper/
+cooja-example-folder/
+build/
+*.csc
+*.z1

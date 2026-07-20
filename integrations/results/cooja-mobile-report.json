@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 1,
+  "status": "PASS",
+  "startedAt": "2026-07-16T10:37:52.612Z",
+  "completedAt": "2026-07-16T10:37:59.553Z",
+  "command": "./gradlew --no-daemon run --args=<headless Cooja arguments>",
+  "toolchain": {
+    "contikiNgRevision": "6ac4608cdd8e007ae328905687db9a326dd09304",
+    "coojaRevision": "0a518f80c4a6c79a0cfda332f3d6bc6d7684bc7a",
+    "mobilitySourceSha256": "634bfd55e79a067ce6a3614a1dda6b5b57da00747e30da6710cbf7dcdb50ccef"
+  },
+  "sourceAudit": {
+    "exactSourceMatch": true,
+    "zeroBasedMoteIndex": true,
+    "timeFromSecondField": true,
+    "xyFromThirdAndFourthFields": true,
+    "zFieldConsumed": false,
+    "wrapMoves": true,
+    "actualContikiNgRevision": "6ac4608cdd8e007ae328905687db9a326dd09304",
+    "actualCoojaRevision": "0a518f80c4a6c79a0cfda332f3d6bc6d7684bc7a"
+  },
+  "observations": {
+    "checkLines": [
+      "COOJA_CHECK label=waypoint-t0 time_ms=200 x=0 y=0 z=0 error_m=0",
+      "COOJA_CHECK label=waypoint-t2 time_ms=2200 x=3 y=-4 z=0 error_m=0",
+      "COOJA_CHECK label=waypoint-t5 time_ms=5200 x=-2 y=-4 z=0 error_m=0",
+      "COOJA_CHECK label=hold-before-t9 time_ms=8800 x=-2 y=-4 z=0 error_m=0",
+      "COOJA_CHECK label=wrapped-after-t9 time_ms=9200 x=0 y=0 z=0 error_m=0"
+    ],
+    "checkpointCount": 5,
+    "maximumPositionErrorMeters": 0,
+    "wrapObserved": true,
+    "terminalWaypointIsStable": false,
+    "staticZeroPeriodRisk": true,
+    "zFieldConsumedByPlugin": false
+  },
+  "process": {
+    "exitCode": 0,
+    "signal": null,
+    "timedOut": false,
+    "expectedTestCount": 5,
+    "observedTestOkCount": 5
+  }
+}

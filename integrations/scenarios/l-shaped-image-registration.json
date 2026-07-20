@@ -1,0 +1,55 @@
+{
+  "schemaVersion": 1,
+  "description": "Corresponding marker centres digitized from the two legacy L-shaped topology screenshots.",
+  "coordinateConvention": "integer image pixels from the top-left corner; x rightward and y downward",
+  "digitizationMethod": "Marker centres were localized by circular-edge scoring and checked against the visible node labels.",
+  "source": {
+    "editorImage": {
+      "path": "media/L-shaped-cooja-positioner.png",
+      "sha256": "45c21b940d8caaa02230420557f3cd0de467efa8378ac8a0414dd73f6658f8bc",
+      "widthPixels": 848,
+      "heightPixels": 601
+    },
+    "coojaImage": {
+      "path": "media/L-shaped-cooja-projection.png",
+      "sha256": "e458f2c42ddf2dbec3703775b09f146d1baf9cfd8e7e4965a82c693735118619",
+      "widthPixels": 1391,
+      "heightPixels": 881
+    }
+  },
+  "points": [
+    {"nodeId": 1, "editor": [47, 62], "cooja": [53, 62]},
+    {"nodeId": 2, "editor": [65, 86], "cooja": [82, 101]},
+    {"nodeId": 3, "editor": [81, 112], "cooja": [108, 142]},
+    {"nodeId": 4, "editor": [104, 136], "cooja": [145, 181]},
+    {"nodeId": 5, "editor": [122, 158], "cooja": [173, 216]},
+    {"nodeId": 6, "editor": [143, 184], "cooja": [207, 259]},
+    {"nodeId": 7, "editor": [162, 210], "cooja": [237, 301]},
+    {"nodeId": 8, "editor": [183, 236], "cooja": [271, 342]},
+    {"nodeId": 9, "editor": [202, 260], "cooja": [302, 380]},
+    {"nodeId": 10, "editor": [203, 288], "cooja": [302, 428]},
+    {"nodeId": 11, "editor": [232, 297], "cooja": [350, 440]},
+    {"nodeId": 12, "editor": [254, 318], "cooja": [386, 476]},
+    {"nodeId": 13, "editor": [271, 348], "cooja": [414, 522]},
+    {"nodeId": 14, "editor": [290, 372], "cooja": [444, 561]},
+    {"nodeId": 15, "editor": [308, 395], "cooja": [472, 598]},
+    {"nodeId": 16, "editor": [327, 422], "cooja": [504, 640]},
+    {"nodeId": 17, "editor": [349, 443], "cooja": [539, 675]},
+    {"nodeId": 18, "editor": [365, 468], "cooja": [564, 714]},
+    {"nodeId": 19, "editor": [384, 489], "cooja": [594, 750]},
+    {"nodeId": 20, "editor": [403, 510], "cooja": [624, 785]},
+    {"nodeId": 21, "editor": [420, 535], "cooja": [652, 822]},
+    {"nodeId": 22, "editor": [437, 561], "cooja": [679, 863]},
+    {"nodeId": 23, "editor": [461, 539], "cooja": [716, 829]},
+    {"nodeId": 24, "editor": [486, 521], "cooja": [757, 799]},
+    {"nodeId": 25, "editor": [509, 501], "cooja": [794, 767]},
+    {"nodeId": 26, "editor": [532, 484], "cooja": [831, 739]},
+    {"nodeId": 27, "editor": [559, 466], "cooja": [873, 711]},
+    {"nodeId": 28, "editor": [583, 448], "cooja": [914, 681]},
+    {"nodeId": 29, "editor": [638, 443], "cooja": [1000, 675]},
+    {"nodeId": 30, "editor": [686, 423], "cooja": [1078, 642]},
+    {"nodeId": 31, "editor": [722, 380], "cooja": [1137, 573]},
+    {"nodeId": 32, "editor": [767, 356], "cooja": [1207, 534]},
+    {"nodeId": 33, "editor": [805, 332], "cooja": [1269, 498]}
+  ]
+}

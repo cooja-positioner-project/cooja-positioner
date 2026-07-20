@@ -1,0 +1,225 @@
+{
+  "schemaVersion": 1,
+  "status": "PASS",
+  "startedAt": "2026-07-16T12:02:01.049Z",
+  "completedAt": "2026-07-16T12:02:02.442Z",
+  "toolchain": {
+    "release": "3.47",
+    "archiveUrl": "https://www.nsnam.org/release/ns-3.47.tar.bz2",
+    "archiveSha1": "897c3f2db2c6de6a8291e46b3020dbeb1af75269",
+    "requiredParser": "ns3::Ns2MobilityHelper"
+  },
+  "verifier": {
+    "path": "integrations/ns3/cooja-positioner-ns3.cc",
+    "sha256": "15fac2cc2b9cba875aedd4cd566160685f79a4105604701b38a3b0e6f41228dd",
+    "toleranceMeters": 0.000001
+  },
+  "build": {
+    "configureCommand": "./ns3 configure --build-profile=optimized --disable-examples --disable-tests --enable-modules=\"core;network;mobility\"",
+    "configure": {
+      "exitCode": 0,
+      "signal": null,
+      "timedOut": false
+    },
+    "buildCommand": "./ns3 build cooja-positioner-ns3",
+    "build": {
+      "exitCode": 0,
+      "signal": null,
+      "timedOut": false
+    }
+  },
+  "observations": {
+    "scenarioCount": 2,
+    "checkpointCount": 11,
+    "maximumPositionErrorMeters": 1e-9,
+    "executions": [
+      {
+        "scenario": "mobile",
+        "status": "PASS",
+        "command": "./ns3 run \"cooja-positioner-ns3 --traceFile=<repository>/integrations/ns3/mobile/mobility-ns3.tcl --scenario=mobile --tolerance=0.000001\"",
+        "trace": {
+          "path": "integrations/ns3/mobile/mobility-ns3.tcl",
+          "sha256": "5d4274d8da627e357dd4ab80b1e0f6e24c7c284aa517c1c786873052d631b7cd"
+        },
+        "observations": {
+          "expectedCheckCount": 8,
+          "observedCheckCount": 8,
+          "maximumPositionErrorMeters": 1e-9,
+          "checks": [
+            {
+              "label": "initial",
+              "node": 0,
+              "time_s": 0,
+              "expected_x": 0,
+              "expected_y": 0,
+              "expected_z": 0,
+              "actual_x": 0,
+              "actual_y": 0,
+              "actual_z": 0,
+              "error_m": 0,
+              "status": "PASS"
+            },
+            {
+              "label": "segment-1-quarter",
+              "node": 0,
+              "time_s": 0.5,
+              "expected_x": 0.75,
+              "expected_y": -1,
+              "expected_z": 0,
+              "actual_x": 0.75,
+              "actual_y": -1,
+              "actual_z": 0,
+              "error_m": 0,
+              "status": "PASS"
+            },
+            {
+              "label": "segment-1-midpoint",
+              "node": 0,
+              "time_s": 1,
+              "expected_x": 1.5,
+              "expected_y": -2,
+              "expected_z": 0,
+              "actual_x": 1.5,
+              "actual_y": -2,
+              "actual_z": 0,
+              "error_m": 0,
+              "status": "PASS"
+            },
+            {
+              "label": "segment-2-early",
+              "node": 0,
+              "time_s": 2.5,
+              "expected_x": 2.166666666,
+              "expected_y": -4,
+              "expected_z": 0,
+              "actual_x": 2.166666666,
+              "actual_y": -4,
+              "actual_z": 0,
+              "error_m": 0,
+              "status": "PASS"
+            },
+            {
+              "label": "segment-2-midpoint",
+              "node": 0,
+              "time_s": 3.5,
+              "expected_x": 0.5,
+              "expected_y": -4,
+              "expected_z": 0,
+              "actual_x": 0.499999999,
+              "actual_y": -4,
+              "actual_z": 0,
+              "error_m": 1e-9,
+              "status": "PASS"
+            },
+            {
+              "label": "segment-3-early",
+              "node": 0,
+              "time_s": 5.5,
+              "expected_x": -2,
+              "expected_y": -2.75,
+              "expected_z": 0,
+              "actual_x": -1.999999999,
+              "actual_y": -2.75,
+              "actual_z": 0,
+              "error_m": 1e-9,
+              "status": "PASS"
+            },
+            {
+              "label": "segment-3-midpoint",
+              "node": 0,
+              "time_s": 7,
+              "expected_x": -2,
+              "expected_y": 1,
+              "expected_z": 0,
+              "actual_x": -1.999999999,
+              "actual_y": 1,
+              "actual_z": 0,
+              "error_m": 1e-9,
+              "status": "PASS"
+            },
+            {
+              "label": "terminal-hold",
+              "node": 0,
+              "time_s": 9.1,
+              "expected_x": -2,
+              "expected_y": 6,
+              "expected_z": 0,
+              "actual_x": -1.999999999,
+              "actual_y": 6,
+              "actual_z": 0,
+              "error_m": 1e-9,
+              "status": "PASS"
+            }
+          ],
+          "resultLine": "NS3_RESULT scenario=mobile checks=8 status=PASS"
+        },
+        "process": {
+          "exitCode": 0,
+          "signal": null,
+          "timedOut": false
+        }
+      },
+      {
+        "scenario": "static",
+        "status": "PASS",
+        "command": "./ns3 run \"cooja-positioner-ns3 --traceFile=<repository>/integrations/ns3/static/mobility-ns3.tcl --scenario=static --tolerance=0.000001\"",
+        "trace": {
+          "path": "integrations/ns3/static/mobility-ns3.tcl",
+          "sha256": "266914b645a25411e5949ecbf384d1633e0f35df61659e2ac05c46340c8a75d9"
+        },
+        "observations": {
+          "expectedCheckCount": 3,
+          "observedCheckCount": 3,
+          "maximumPositionErrorMeters": 0,
+          "checks": [
+            {
+              "label": "static-node-0",
+              "node": 0,
+              "time_s": 0.1,
+              "expected_x": 0,
+              "expected_y": 0,
+              "expected_z": 0,
+              "actual_x": 0,
+              "actual_y": 0,
+              "actual_z": 0,
+              "error_m": 0,
+              "status": "PASS"
+            },
+            {
+              "label": "static-node-1",
+              "node": 1,
+              "time_s": 0.1,
+              "expected_x": 12.5,
+              "expected_y": -8,
+              "expected_z": 0,
+              "actual_x": 12.5,
+              "actual_y": -8,
+              "actual_z": 0,
+              "error_m": 0,
+              "status": "PASS"
+            },
+            {
+              "label": "static-node-2",
+              "node": 2,
+              "time_s": 0.1,
+              "expected_x": -4,
+              "expected_y": -15.25,
+              "expected_z": 0,
+              "actual_x": -4,
+              "actual_y": -15.25,
+              "actual_z": 0,
+              "error_m": 0,
+              "status": "PASS"
+            }
+          ],
+          "resultLine": "NS3_RESULT scenario=static checks=3 status=PASS"
+        },
+        "process": {
+          "exitCode": 0,
+          "signal": null,
+          "timedOut": false
+        }
+      }
+    ]
+  }
+}

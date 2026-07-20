@@ -1,0 +1,184 @@
+{
+  "schemaVersion": 1,
+  "status": "PASS",
+  "evidenceLevel": "retrospective raster registration; not a metre-level coordinate-accuracy test",
+  "fixture": "integrations/scenarios/l-shaped-image-registration.json",
+  "sources": {
+    "editorImage": {
+      "path": "media/L-shaped-cooja-positioner.png",
+      "sha256": "45c21b940d8caaa02230420557f3cd0de467efa8378ac8a0414dd73f6658f8bc",
+      "widthPixels": 848,
+      "heightPixels": 601
+    },
+    "coojaImage": {
+      "path": "media/L-shaped-cooja-projection.png",
+      "sha256": "e458f2c42ddf2dbec3703775b09f146d1baf9cfd8e7e4965a82c693735118619",
+      "widthPixels": 1391,
+      "heightPixels": 881
+    }
+  },
+  "method": {
+    "model": "least-squares orientation-preserving 2-D similarity transform",
+    "nuisanceParametersRemoved": [
+      "translation",
+      "rotation",
+      "uniform screenshot scale"
+    ],
+    "coordinateConvention": "integer image pixels from the top-left corner; x rightward and y downward"
+  },
+  "acceptance": {
+    "maximumRmsNodeResidualPixels": 2,
+    "maximumNodeResidualPixels": 4,
+    "maximumNormalizedRmsResidualPercentOfCoojaDiagonal": 0.15,
+    "maximumMeanAdjacentSegmentLengthErrorPercent": 3,
+    "maximumMeanTurningAngleErrorDegrees": 2.5
+  },
+  "metrics": {
+    "matchedNodeCount": 33,
+    "fittedScale": 1.6044153349920744,
+    "fittedRotationDegrees": 0.012079399460538525,
+    "rmsNodeResidualPixels": 1.3678941209884585,
+    "maximumNodeResidualPixels": 3.0734961116859125,
+    "maximumNodeResidualNodeId": 20,
+    "normalizedRmsResidualPercentOfCoojaDiagonal": 0.09394166000775861,
+    "meanAdjacentSegmentLengthErrorPixels": 1.0490556627725165,
+    "meanAdjacentSegmentLengthErrorPercent": 1.955517124548415,
+    "maximumAdjacentSegmentLengthErrorPercent": 6.349436409354355,
+    "meanTurningAngleErrorDegrees": 1.6689013057232842,
+    "maximumTurningAngleErrorDegrees": 5.250624419900713
+  },
+  "nodeResidualsPixels": [
+    {
+      "nodeId": 1,
+      "residualPixels": 1.0610002851250768
+    },
+    {
+      "nodeId": 2,
+      "residualPixels": 0.5574563535498944
+    },
+    {
+      "nodeId": 3,
+      "residualPixels": 1.2932755330236614
+    },
+    {
+      "nodeId": 4,
+      "residualPixels": 0.8588744054400405
+    },
+    {
+      "nodeId": 5,
+      "residualPixels": 1.2049769164209694
+    },
+    {
+      "nodeId": 6,
+      "residualPixels": 0.27988394121760823
+    },
+    {
+      "nodeId": 7,
+      "residualPixels": 0.8261705662720625
+    },
+    {
+      "nodeId": 8,
+      "residualPixels": 0.4420846503857786
+    },
+    {
+      "nodeId": 9,
+      "residualPixels": 0.7809862048155886
+    },
+    {
+      "nodeId": 10,
+      "residualPixels": 2.7204650676962148
+    },
+    {
+      "nodeId": 11,
+      "residualPixels": 0.14370460769019117
+    },
+    {
+      "nodeId": 12,
+      "residualPixels": 2.2887763344612915
+    },
+    {
+      "nodeId": 13,
+      "residualPixels": 1.4861907348945271
+    },
+    {
+      "nodeId": 14,
+      "residualPixels": 1.1323315749760248
+    },
+    {
+      "nodeId": 15,
+      "residualPixels": 0.6195321268132183
+    },
+    {
+      "nodeId": 16,
+      "residualPixels": 1.8135949930884638
+    },
+    {
+      "nodeId": 17,
+      "residualPixels": 1.490400414958942
+    },
+    {
+      "nodeId": 18,
+      "residualPixels": 0.8918977518907751
+    },
+    {
+      "nodeId": 19,
+      "residualPixels": 1.778661363302654
+    },
+    {
+      "nodeId": 20,
+      "residualPixels": 3.0734961116859125
+    },
+    {
+      "nodeId": 21,
+      "residualPixels": 0.4941351287131637
+    },
+    {
+      "nodeId": 22,
+      "residualPixels": 0.8048494396378828
+    },
+    {
+      "nodeId": 23,
+      "residualPixels": 1.3879039170649368
+    },
+    {
+      "nodeId": 24,
+      "residualPixels": 0.734323805029745
+    },
+    {
+      "nodeId": 25,
+      "residualPixels": 0.6174339371865992
+    },
+    {
+      "nodeId": 26,
+      "residualPixels": 1.2839413687450874
+    },
+    {
+      "nodeId": 27,
+      "residualPixels": 1.5952530350829595
+    },
+    {
+      "nodeId": 28,
+      "residualPixels": 1.7910687698559091
+    },
+    {
+      "nodeId": 29,
+      "residualPixels": 1.3880257136546998
+    },
+    {
+      "nodeId": 30,
+      "residualPixels": 0.550828853442941
+    },
+    {
+      "nodeId": 31,
+      "residualPixels": 1.0202133103546487
+    },
+    {
+      "nodeId": 32,
+      "residualPixels": 1.6285580896856269
+    },
+    {
+      "nodeId": 33,
+      "residualPixels": 1.5390642497796883
+    }
+  ]
+}

@@ -1,0 +1,5 @@
+COOJA_CHECK label=waypoint-t0 time_ms=200 x=0 y=0 z=0 error_m=0
+COOJA_CHECK label=waypoint-t2 time_ms=2200 x=3 y=-4 z=0 error_m=0
+COOJA_CHECK label=waypoint-t5 time_ms=5200 x=-2 y=-4 z=0 error_m=0
+COOJA_CHECK label=hold-before-t9 time_ms=8800 x=-2 y=-4 z=0 error_m=0
+COOJA_CHECK label=wrapped-after-t9 time_ms=9200 x=0 y=0 z=0 error_m=0

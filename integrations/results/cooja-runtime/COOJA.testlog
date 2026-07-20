@@ -1,0 +1,4 @@
+Random seed: 123456
+COOJA_CHECK label=wrapped-after-t9 time_ms=9200 x=0 y=0 z=0 error_m=0
+TEST OK
+Test ended at simulation time: 9200000

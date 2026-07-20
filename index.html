@@ -1,0 +1,2010 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Cooja-Positioner — Geo-Scenario Editor and Simulator Exporter</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <!-- Leaflet -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script src="coordinate-core.js"></script>
+  <script src="simulator-adapters.js"></script>
+  <style>
+    html, body { margin: 0; height: 100%; overflow: hidden; font-family: Arial, sans-serif; }
+    #container { display: flex; height: 100%; }
+    #stage { position: relative; flex: 1; overflow: hidden; }
+    #map { position: absolute; inset: 0; z-index: 0; }
+    canvas#grid { position: absolute; inset: 0; z-index: 1; pointer-events: none; }
+
+    #sidebar { width: 340px; padding: 10px; background: #fff; border-left: 1px solid #ccc; display: flex; flex-direction: column; gap: 10px; min-height: 0; overflow-y: scroll; height: 100vh; }
+    #controls label { display: inline-block; width: 110px; }
+    #customOriginControls { margin-top: 8px; padding: 8px; border: 1px solid #ddd; border-radius: 4px; background: #fafafa; }
+    #customOriginControls label { width: 95px; }
+    #customOriginControls input { width: 185px; }
+    #controls input, #controls select { width: 200px; }
+    .output-container { display: flex; flex-direction: column; flex: 0 0 auto; height: 250px; }
+    #output { flex: 1; overflow-y: scroll; font-family: monospace; white-space: pre; border: 1px solid #ccc; padding: 5px; min-height: 0; }
+    .output-header { display: flex; align-items: center; gap: 8px; }
+    .output-header label { margin: 0; }
+    .input-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .input-header label { margin: 0; }
+    .hint { font-size: 12px; color: #555; line-height: 1.4; }
+    .btnrow { display: flex; gap: 8px; flex-wrap: wrap; }
+    button { padding: 6px 10px; }
+    #uploadInput { display: none; }
+    .toggle-group { display: flex; gap: 0; border: 1px solid #ccc; border-radius: 4px; overflow: hidden; }
+    .toggle-button { flex: 1; padding: 8px 12px; border: none; background: #f5f5f5; color: #333; cursor: pointer; font-size: 14px; transition: all 0.2s; }
+    .toggle-button:first-child { border-right: 1px solid #ccc; }
+    .toggle-button.active { background: #007bff; color: white; font-weight: 600; }
+    .toggle-button:hover:not(.active) { background: #e9ecef; }
+    .toggle-label { font-weight: 600; margin-bottom: 5px; display: block; }
+    .context-menu { display: none; position: fixed; background: white; border: 1px solid #ccc; border-radius: 4px; box-shadow: 0 2px 8px rgba(0,0,0,0.15); z-index: 10000; min-width: 150px; }
+    .context-menu.show { display: block; }
+    .context-menu-item { padding: 8px 16px; cursor: pointer; font-size: 14px; border-bottom: 1px solid #eee; }
+    .context-menu-item:last-child { border-bottom: none; }
+    .context-menu-item:hover { background: #f0f0f0; }
+    .context-menu-item.delete { color: #d32f2f; }
+
+    /* Keyboard Shortcuts Overlay */
+    .shortcuts-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(4px);
+      z-index: 10000;
+      align-items: center;
+      justify-content: center;
+      animation: fadeIn 0.2s ease-in-out;
+    }
+
+    .shortcuts-overlay.show {
+      display: flex;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    .shortcuts-container {
+      background: rgba(255, 255, 255, 0.95);
+      border-radius: 12px;
+      padding: 30px;
+      max-width: 600px;
+      width: 90%;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+      animation: slideUp 0.3s ease-out;
+    }
+
+    @keyframes slideUp {
+      from {
+        transform: translateY(20px);
+        opacity: 0;
+      }
+      to {
+        transform: translateY(0);
+        opacity: 1;
+      }
+    }
+
+    .shortcuts-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 25px;
+      padding-bottom: 15px;
+      border-bottom: 2px solid #e0e0e0;
+    }
+
+    .shortcuts-header h1 {
+      font-size: 24px;
+      font-weight: 600;
+      color: #333;
+      margin: 0;
+    }
+
+    .shortcuts-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+
+    .shortcut-section {
+      margin-bottom: 20px;
+    }
+
+    .shortcut-section.full-width {
+      grid-column: 1 / -1;
+    }
+
+    .section-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: #666;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 12px;
+    }
+
+    .shortcut-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 0;
+      border-bottom: 1px solid #f0f0f0;
+      gap: 12px;
+    }
+
+    .shortcut-item:last-child {
+      border-bottom: none;
+    }
+
+    .shortcut-description {
+      font-size: 14px;
+      color: #333;
+      flex: 1;
+    }
+
+    .shortcut-keys {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+
+    .key {
+      background: linear-gradient(to bottom, #f5f5f5, #e8e8e8);
+      border: 1px solid #d0d0d0;
+      border-radius: 4px;
+      padding: 6px 12px;
+      font-size: 12px;
+      font-weight: 600;
+      color: #333;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      min-width: 28px;
+      text-align: center;
+      font-family: 'Courier New', monospace;
+    }
+
+    .key.plus {
+      background: none;
+      border: none;
+      box-shadow: none;
+      padding: 0;
+      min-width: auto;
+      color: #666;
+      font-size: 16px;
+    }
+
+    .shortcuts-footer {
+      margin-top: 25px;
+      padding-top: 15px;
+      border-top: 2px solid #e0e0e0;
+      text-align: center;
+      font-size: 12px;
+      color: #999;
+    }
+  </style>
+</head>
+<body>
+  <!-- Keyboard Shortcuts Overlay -->
+  <div class="shortcuts-overlay" id="shortcutsOverlay">
+    <div class="shortcuts-container">
+      <div class="shortcuts-header">
+        <h1>Keyboard Shortcuts</h1>
+      </div>
+
+      <div class="shortcuts-grid">
+        <div class="shortcut-section">
+          <div class="section-title">Selection</div>
+          <div class="shortcut-item">
+            <span class="shortcut-description">Select All — repeat when all selected to clear (Point Mode)</span>
+            <div class="shortcut-keys">
+              <span class="key">Ctrl</span>
+              <span class="key plus">+</span>
+              <span class="key">A</span>
+            </div>
+          </div>
+          <div class="shortcut-item">
+            <span class="shortcut-description">Clear selection (Point Mode)</span>
+            <div class="shortcut-keys">
+              <span class="key">Esc</span>
+            </div>
+          </div>
+          <div class="shortcut-item">
+            <span class="shortcut-description">Multiple Selection</span>
+            <div class="shortcut-keys">
+              <span class="key">Ctrl</span>
+              <span class="key plus">+</span>
+              <span class="key">Shift</span>
+              <span class="key plus">+</span>
+              <span class="key">Click</span>
+            </div>
+          </div>
+          <div class="shortcut-item">
+            <span class="shortcut-description">One Selection</span>
+            <div class="shortcut-keys">
+              <span class="key">Click</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="shortcut-section">
+          <div class="section-title">Editing</div>
+          <div class="shortcut-item">
+            <span class="shortcut-description">Delete Selected</span>
+            <div class="shortcut-keys">
+              <span class="key">Del</span>
+            </div>
+          </div>
+          <div class="shortcut-item">
+            <span class="shortcut-description">Undo</span>
+            <div class="shortcut-keys">
+              <span class="key">Ctrl</span>
+              <span class="key plus">+</span>
+              <span class="key">Z</span>
+            </div>
+          </div>
+          <div class="shortcut-item">
+            <span class="shortcut-description">Redo</span>
+            <div class="shortcut-keys">
+              <span class="key">Ctrl</span>
+              <span class="key plus">+</span>
+              <span class="key">Y</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="shortcut-section full-width">
+          <div class="section-title">Navigation</div>
+          <div class="shortcut-item">
+            <span class="shortcut-description">Zoom In/Out (Map Mode)</span>
+            <div class="shortcut-keys">
+              <span class="key">Ctrl</span>
+              <span class="key plus">+</span>
+              <span class="key">Mouse Wheel</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="shortcuts-footer">
+        Hold <span class="key">Ctrl</span> + <span class="key">?</span> to show shortcuts
+      </div>
+    </div>
+  </div>
+
+  <div id="container">
+    <div id="stage">
+      <div id="map" aria-label="OpenStreetMap"></div>
+      <canvas id="grid"></canvas>
+    </div>
+
+    <div id="sidebar">
+      <div id="searchContainer">
+        <label for="searchInput"><b>Search Location</b></label>
+        <div style="position: relative;">
+          <input type="text" id="searchInput" placeholder="Enter city, address or place name..." style="width: 100%; padding: 8px; margin-bottom: 5px;">
+          <div id="searchResults" style="position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #ccc; border-top: none; max-height: 200px; overflow-y: auto; z-index: 1000; display: none;"></div>
+        </div>
+      </div>
+
+      <div>
+        <label class="toggle-label"><b>Scenario</b></label>
+        <div class="toggle-group">
+          <button class="toggle-button active" id="scenarioMobile" data-value="mobile">Mobile</button>
+          <button class="toggle-button" id="scenarioFixed" data-value="fixed">Static</button>
+        </div>
+      </div>
+
+      <div>
+        <label class="toggle-label"><b>Work Mode</b></label>
+        <div class="toggle-group">
+          <button class="toggle-button active" id="workModeMaps" data-value="maps">Map Mode</button>
+          <button class="toggle-button" id="workModePoint" data-value="point">Point Mode</button>
+          <button class="toggle-button" id="workModePolygon" data-value="polygon" title="Static only">Polygon Mode</button>
+        </div>
+        <div id="polygonModeHint" class="hint" style="display:none; margin-top: 6px;">
+          Polygon Mode: to finish press <b>ENTER</b>, to cancel press <b>ESC</b>. (Double-click also finishes.)
+        </div>
+        <div id="polygonMobileControls" class="hint" style="display:none; margin-top: 6px;">
+          <div style="font-weight:600; margin-bottom:6px;">Mobile scan direction</div>
+          <div class="toggle-group" style="width:100%;">
+            <button class="toggle-button active" id="scanDirHorizontal" data-value="horizontal">Horizontal</button>
+            <button class="toggle-button" id="scanDirVertical" data-value="vertical">Vertical</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="controls">
+        <label for="nodeIdInput">Node ID:</label>
+        <input type="number" id="nodeIdInput" value="1"><br><br>
+        <label for="intervalInput">Interval (ms):</label>
+        <input type="number" id="intervalInput" value="1000"><br><br>
+        <label for="originModeSelect">XY Origin:</label>
+        <select id="originModeSelect">
+          <option value="first" selected>First input row</option>
+          <option value="custom">Custom WGS84 point</option>
+        </select>
+        <div id="customOriginControls" style="display:none;">
+          <label for="originLatInput">Latitude:</label>
+          <input type="number" id="originLatInput" min="-90" max="90" step="any" placeholder="41.2867"><br><br>
+          <label for="originLngInput">Longitude:</label>
+          <input type="number" id="originLngInput" min="-180" max="180" step="any" placeholder="36.3300"><br><br>
+          <label for="originAltInput">Altitude (m):</label>
+          <input type="number" id="originAltInput" step="any" value="0"><br><br>
+          <button id="useMapCenterOriginBtn" type="button">Use map center</button>
+        </div>
+        <div id="originStatus" class="hint" style="margin:6px 0 10px 114px;">
+          Origin is the first valid input row.
+        </div>
+        <label for="circleRadiusSelect">Circle Radius:</label>
+        <select id="circleRadiusSelect">
+          <option value="10" selected>10m</option>
+          <option value="20">20m</option>
+          <option value="30">30m</option>
+          <option value="40">40m</option>
+          <option value="50">50m</option>
+        </select><br><br>
+      </div>
+      <div class="btnrow">
+        <button id="undoBtn" title="Ctrl+Z">Undo</button>
+        <button id="redoBtn" title="Ctrl+Y or Ctrl+Shift+Z">Redo</button>
+        <button id="deleteBtn" title="Del / Backspace">Delete Selected</button>
+        <button id="resetBtn">Reset</button>
+        <input type="file" id="uploadInput" accept=".dat" />
+      </div>
+      <div class="hint">
+        <div style="margin-top: 8px;">
+          <button class="toggle-button active" id="showShortcutsBtn" style="width: 100%;">📋 Keyboard Shortcuts</button>
+        </div>
+      </div>
+      <div>
+        <div class="input-header">
+          <label for="latlngInput"><b>Latitude/Longitude Input</b></label>
+          <button id="uploadBtn">Upload .dat</button>
+        </div>
+        <textarea id="latlngInput" placeholder="&lt;node_id&gt; &lt;time&gt; &lt;latitude&gt; &lt;longitude&gt;&#10;Example:&#10;1 0.0 41.2867 36.33&#10;1 1.0 41.2870 36.331" style="width: 100%; height: 150px; font-family: monospace; font-size: 12px; padding: 5px; border: 1px solid #ccc; resize: vertical;"></textarea>
+        <div style="margin-top: 8px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px;">
+          <label for="simExportSelect"><b>Simulator</b></label>
+          <select id="simExportSelect" style="padding: 4px 8px;">
+            <option value="cooja" selected>Cooja</option>
+            <option value="ns2">ns-2</option>
+            <option value="ns3">ns-3</option>
+            <option value="omnetpp">OMNeT++</option>
+          </select>
+          <button id="convertBtn" type="button" style="padding: 6px 10px;">
+            Convert<span aria-hidden="true" style="margin-left: 6px; font-weight: bold;">⬇</span>
+          </button>
+        </div>
+      </div>
+      <div class="output-container">
+        <div class="output-header">
+          <label id="outputHeaderLabel" for="output"><b>Output preview</b></label>
+          <button id="saveBtn">Save export</button>
+        </div>
+        <div id="exportCompatibilityNotice" hidden role="status" style="margin:8px 0; padding:8px 10px; border:1px solid #d97706; border-radius:4px; background:#fffbeb; color:#78350f; font-size:12px; line-height:1.4;"></div>
+        <pre id="output"></pre>
+        <div style="margin-top: 8px; display: flex; justify-content: flex-end;">
+          <button id="copyOutputBtn" title="Copy all content">Copy</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Context Menu -->
+  <div id="contextMenu" class="context-menu">
+    <div class="context-menu-item" id="renameNodeItem">Rename Node-ID</div>
+    <div class="context-menu-item delete" id="deleteNodeItem">Delete</div>
+  </div>
+
+  <script>
+    // === DOM ===
+    const stage = document.getElementById('stage');
+    const canvas = document.getElementById('grid');
+    const ctx = canvas.getContext('2d');
+    const output = document.getElementById('output');
+    const nodeInput = document.getElementById('nodeIdInput');
+    const intervalInput = document.getElementById('intervalInput');
+    const originModeSelect = document.getElementById('originModeSelect');
+    const customOriginControls = document.getElementById('customOriginControls');
+    const originLatInput = document.getElementById('originLatInput');
+    const originLngInput = document.getElementById('originLngInput');
+    const originAltInput = document.getElementById('originAltInput');
+    const useMapCenterOriginBtn = document.getElementById('useMapCenterOriginBtn');
+    const originStatus = document.getElementById('originStatus');
+    const uploadInput = document.getElementById('uploadInput');
+    const uploadBtn = document.getElementById('uploadBtn');
+    const resetBtn = document.getElementById('resetBtn');
+    const saveBtn = document.getElementById('saveBtn');
+    const deleteBtn = document.getElementById('deleteBtn');
+    const undoBtn = document.getElementById('undoBtn');
+    const redoBtn = document.getElementById('redoBtn');
+    const copyOutputBtn = document.getElementById('copyOutputBtn');
+    const simExportSelect = document.getElementById('simExportSelect');
+    const outputHeaderLabel = document.getElementById('outputHeaderLabel');
+    const exportCompatibilityNotice = document.getElementById('exportCompatibilityNotice');
+    const circleRadiusSelect = document.getElementById('circleRadiusSelect');
+    const searchInput = document.getElementById('searchInput');
+    const searchResults = document.getElementById('searchResults');
+    const latlngInput = document.getElementById('latlngInput');
+    const convertBtn = document.getElementById('convertBtn');
+    const scenarioMobileBtn = document.getElementById('scenarioMobile');
+    const scenarioFixedBtn = document.getElementById('scenarioFixed');
+    const workModeMapsBtn = document.getElementById('workModeMaps');
+    const workModePointBtn = document.getElementById('workModePoint');
+    const workModePolygonBtn = document.getElementById('workModePolygon');
+    const scanDirHorizontalBtn = document.getElementById('scanDirHorizontal');
+    const scanDirVerticalBtn = document.getElementById('scanDirVertical');
+    const contextMenu = document.getElementById('contextMenu');
+    const renameNodeItem = document.getElementById('renameNodeItem');
+    const deleteNodeItem = document.getElementById('deleteNodeItem');
+
+    // Polygon / route colors (amber polygon border, blue mobile route)
+    const POLYGON_STROKE = '#d97706';
+    const POLYGON_FILL = '#d97706';
+    const ROUTE_STROKE = '#2563eb';
+
+    // === Cookie Helper Functions ===
+    function setCookie(name, value, days) {
+      const expires = new Date();
+      expires.setTime(expires.getTime() + (days * 24 * 60 * 60 * 1000));
+      document.cookie = `${name}=${value};expires=${expires.toUTCString()};path=/`;
+    }
+
+    function getCookie(name) {
+      const nameEQ = name + "=";
+      const ca = document.cookie.split(';');
+      for (let i = 0; i < ca.length; i++) {
+        let c = ca[i];
+        while (c.charAt(0) === ' ') c = c.substring(1, c.length);
+        if (c.indexOf(nameEQ) === 0) return c.substring(nameEQ.length, c.length);
+      }
+      return null;
+    }
+
+    // === Leaflet Map ===
+    // Load saved location from localStorage/cookie or use default
+    let savedCenter = [0, 0]; // World center as default (universal for global users)
+    let savedZoom = 2; // Wide view to show world map
+
+    const savedLocationLS = (() => {
+      try { return localStorage.getItem('mapLocation'); } catch { return null; }
+    })();
+    const savedLocationCookie = getCookie('mapLocation');
+    const savedLocation = savedLocationLS || savedLocationCookie;
+
+    if (savedLocation) {
+      try {
+        const parsed = JSON.parse(savedLocation);
+        if (parsed.center && parsed.zoom) {
+          savedCenter = parsed.center;
+          savedZoom = parsed.zoom;
+        }
+      } catch (e) {
+        console.log('Could not parse saved location (localStorage/cookie)');
+      }
+    }
+    console.log('[cookie] Loaded mapLocation:', { center: savedCenter, zoom: savedZoom, source: savedLocationLS ? 'localStorage' : (savedLocationCookie ? 'cookie' : 'default') });
+
+    const map = L.map('map', {
+      center: savedCenter,
+      zoom: savedZoom,
+      zoomControl: true,
+      attributionControl: true
+    });
+
+    const tileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '&copy; OpenStreetMap contributors'
+    });
+    tileLayer.addTo(map);
+
+    // Save map location to cookie when map is moved or zoomed
+    function saveMapLocation() {
+      const center = map.getCenter();
+      const zoom = map.getZoom();
+      const location = {
+        center: [center.lat, center.lng],
+        zoom: zoom
+      };
+      console.log('[cookie] Saving mapLocation:', location);
+      const payload = JSON.stringify(location);
+      // Save to both localStorage and cookie for robustness (some contexts don't persist cookies well)
+      try { localStorage.setItem('mapLocation', payload); } catch {}
+      setCookie('mapLocation', payload, 365); // Save for 1 year
+    }
+
+    // NOTE: Do NOT auto-save on map navigation. We only save when a point is added.
+
+    // === Styles ===
+    const NODE_STYLE = {
+      fill: 'rgba(0, 122, 255, 0.25)',
+      stroke: 'rgba(0, 92, 205, 0.90)',
+      strokeWidth: 1.25,
+      label: '#111'
+    };
+
+    const coordinateCore = window.CoojaPositionerCoordinateCore;
+    const simulatorAdapterCore = window.CoojaPositionerSimulatorAdapters;
+    if (!coordinateCore) throw new Error('coordinate-core.js could not be loaded');
+    if (!simulatorAdapterCore) throw new Error('simulator-adapters.js could not be loaded');
+    const { geodeticToEnu, enuToGeodetic } = coordinateCore;
+    const { AdapterValidationError, createArtifact, getAdapter } = simulatorAdapterCore;
+
+    // === Canonical scenario state ===
+    let mode = 'maps'; // 'maps' | 'point' | 'polygon'
+    let scenario = 'mobile'; // 'mobile' | 'fixed'
+    const scenarioModel = {
+      schemaVersion: '1.0.0',
+      crs: 'EPSG:4326',
+      scenario,
+      origin: { mode: 'first', lat: null, lng: null, alt: 0 },
+      waypoints: []
+    };
+    let positions = scenarioModel.waypoints; // { nodeId, time, lat, lng, z, timeGenerated }
+    let selected = new Set();
+    let isSelectingRect = false; let selStartS=null, selEndS=null;
+    let draggingNodeIndex = -1; let selectedInitial = null; let preDragSnapshot = null; let dragStartPx = null;
+    let wasDragging = false;
+    let isCtrlSelection = false; // Flag to track if selection was started with Ctrl
+    let lastClickedIndex = -1; // Index of the last clicked point (for drawing circle)
+    let contextMenuNodeIndex = -1; // Index of the node for context menu
+
+    function allowMapSelectionShortcuts(e) {
+      const t = e.target;
+      if (!t || !t.tagName) return true;
+      const tag = t.tagName.toLowerCase();
+      if (tag === 'textarea' || tag === 'select') return false;
+      if (tag === 'input') {
+        const ty = (t.type || '').toLowerCase();
+        if (ty === 'button' || ty === 'checkbox' || ty === 'radio' || ty === 'submit' || ty === 'reset') return true;
+        return false;
+      }
+      if (t.isContentEditable) return false;
+      return true;
+    }
+
+    function intervalSeconds() {
+      const intervalMs = Number.parseFloat(intervalInput.value);
+      return Number.isFinite(intervalMs) && intervalMs >= 0 ? intervalMs / 1000 : 1;
+    }
+
+    function waypointTime(point, index) {
+      if (scenario === 'fixed') return 0;
+      return Number.isFinite(point.time) ? point.time : index * intervalSeconds();
+    }
+
+    function canonicalWaypoint(raw, index = 0) {
+      const parsedId = Number.parseInt(raw.nodeId, 10);
+      const explicitTime = Number.isFinite(raw.time);
+      return {
+        nodeId: Number.isFinite(parsedId) ? parsedId : index + 1,
+        time: explicitTime ? raw.time : index * intervalSeconds(),
+        lat: Number(raw.lat),
+        lng: Number(raw.lng),
+        z: Number.isFinite(raw.z) ? raw.z : 0,
+        timeGenerated: raw.timeGenerated == null ? !explicitTime : Boolean(raw.timeGenerated)
+      };
+    }
+
+    function setPositions(next) {
+      scenarioModel.waypoints = next.map((point, index) => canonicalWaypoint(point, index));
+      positions = scenarioModel.waypoints;
+    }
+
+    function formatWaypointRows() {
+      const includeAltitude = positions.some(p => Math.abs(p.z || 0) > 1e-12);
+      return positions.map((p, i) => {
+        const base = `${p.nodeId} ${waypointTime(p, i).toFixed(9)} ${p.lat.toFixed(9)} ${p.lng.toFixed(9)}`;
+        return includeAltitude ? `${base} ${(p.z || 0).toFixed(3)}` : base;
+      }).join('\n');
+    }
+
+    function refreshLatLngInput() {
+      latlngInput.value = positions.length ? formatWaypointRows() : '';
+    }
+
+    function readCustomOrigin() {
+      const lat = Number.parseFloat(originLatInput.value);
+      const lng = Number.parseFloat(originLngInput.value);
+      const altValue = Number.parseFloat(originAltInput.value);
+      const alt = Number.isFinite(altValue) ? altValue : 0;
+      if (!Number.isFinite(lat) || lat < -90 || lat > 90 || !Number.isFinite(lng) || lng < -180 || lng > 180) {
+        throw new RangeError('Custom origin requires a valid WGS84 latitude and longitude.');
+      }
+      return { lat, lng, alt };
+    }
+
+    function resolveOrigin(points = positions) {
+      if (scenarioModel.origin.mode === 'custom') return readCustomOrigin();
+      if (!points.length) throw new RangeError('At least one valid point is required to define the first-row origin.');
+      return { lat: points[0].lat, lng: points[0].lng, alt: Number.isFinite(points[0].z) ? points[0].z : 0 };
+    }
+
+    function renderOriginUi() {
+      const custom = originModeSelect.value === 'custom';
+      customOriginControls.style.display = custom ? 'block' : 'none';
+      scenarioModel.origin.mode = custom ? 'custom' : 'first';
+      if (custom) {
+        try {
+          const origin = readCustomOrigin();
+          scenarioModel.origin = { mode: 'custom', ...origin };
+          originStatus.textContent = `Fixed WGS84 origin: ${origin.lat.toFixed(7)}, ${origin.lng.toFixed(7)}, h=${origin.alt.toFixed(2)} m.`;
+          originStatus.style.color = '#555';
+        } catch (error) {
+          originStatus.textContent = error.message;
+          originStatus.style.color = '#b42318';
+        }
+      } else {
+        scenarioModel.origin = { mode: 'first', lat: null, lng: null, alt: 0 };
+        originStatus.textContent = 'Origin is the first valid input row; its local X/Y is exactly zero.';
+        originStatus.style.color = '#555';
+      }
+    }
+
+    function setCustomOrigin(origin) {
+      originModeSelect.value = 'custom';
+      originLatInput.value = origin.lat.toFixed(9);
+      originLngInput.value = origin.lng.toFixed(9);
+      originAltInput.value = Number.isFinite(origin.alt) ? String(origin.alt) : '0';
+      handleOriginChange();
+    }
+
+    function handleOriginChange() {
+      renderOriginUi();
+      updateOutput();
+    }
+    originModeSelect.addEventListener('change', handleOriginChange);
+    originLatInput.addEventListener('input', handleOriginChange);
+    originLngInput.addEventListener('input', handleOriginChange);
+    originAltInput.addEventListener('input', handleOriginChange);
+    useMapCenterOriginBtn.addEventListener('click', () => {
+      const center = map.getCenter();
+      setCustomOrigin({ lat: center.lat, lng: center.lng, alt: 0 });
+    });
+    intervalInput.addEventListener('change', () => {
+      positions.forEach((point, index) => {
+        if (point.timeGenerated) point.time = index * intervalSeconds();
+      });
+      refreshLatLngInput();
+      updateOutput();
+    });
+    renderOriginUi();
+
+    // Undo/Redo
+    const undoStack = []; const redoStack = [];
+    const snapshot = () => JSON.parse(JSON.stringify({ positions, scenario, origin: scenarioModel.origin }));
+    function commitHistory(state = snapshot()){ undoStack.push(JSON.parse(JSON.stringify(state))); if (undoStack.length>200) undoStack.shift(); redoStack.length=0; }
+    function restore(state){
+      setPositions(JSON.parse(JSON.stringify(state.positions || [])));
+      scenario = state.scenario || scenario;
+      scenarioModel.scenario = scenario;
+      scenarioMobileBtn.classList.toggle('active', scenario === 'mobile');
+      scenarioFixedBtn.classList.toggle('active', scenario === 'fixed');
+      if (state.origin && state.origin.mode === 'custom') setCustomOrigin(state.origin);
+      else { originModeSelect.value = 'first'; renderOriginUi(); }
+      refreshLatLngInput();
+      draw();
+      updateOutput();
+    }
+
+    // Utils
+    function resize() {
+      const rect = stage.getBoundingClientRect();
+      canvas.width = rect.width; canvas.height = rect.height;
+      draw();
+    }
+    window.addEventListener('resize', resize); resize();
+
+    function nodeRadiusPx(){
+      const nodeId = String(parseInt(nodeInput.value) || 1);
+      // Increase radius for longer Node IDs (doubled for better visibility)
+      const baseRadius = 10; // Doubled from 5
+      const idLength = nodeId.length;
+      if (idLength <= 2) return baseRadius;
+      if (idLength <= 3) return baseRadius + 4; // Doubled from +2
+      if (idLength <= 4) return baseRadius + 8; // Doubled from +4
+      return baseRadius + 12; // Doubled from +6, For 5+ digits
+    }
+
+    function fitFontToCircle(text, radiusPx, minPx = 8) {
+      const maxDiameter = radiusPx * 2 * 0.9; let lo=minPx, hi=Math.max(minPx, Math.floor(radiusPx*1.8)), best=lo;
+      while (lo<=hi){ const mid=(lo+hi>>1); ctx.font=`bold ${mid}px Arial`; const m=ctx.measureText(text); const h=(m.actualBoundingBoxAscent||mid*.8)+(m.actualBoundingBoxDescent||mid*.2); const w=m.width; if (w<=maxDiameter && h<=maxDiameter){ best=mid; lo=mid+1;} else hi=mid-1; }
+      return best;
+    }
+
+    function hitTestNodeMap(px, py){ const r = nodeRadiusPx();
+      for (let i=positions.length-1;i>=0;--i){ const p=positions[i]; const pt = map.latLngToContainerPoint([p.lat, p.lng]); const dx=pt.x-px, dy=pt.y-py; if (Math.hypot(dx,dy)<=r) return i; }
+      return -1; }
+
+    // === Polygon Mode (Fixed only) ===
+    let polygonDraft = []; // array of L.LatLng
+    let polygonDraftLine = null;
+    let polygonPreview = null;
+    let deployedPolygons = []; // array of Leaflet polygon layers (persist on map)
+    let mobileScanDirection = 'horizontal'; // 'horizontal' | 'vertical'
+
+    function setPolygonUiEnabled() {
+      if (!workModePolygonBtn) return;
+      // Polygon Mode is available for both scenarios (Static deploy / Mobile scan path)
+      workModePolygonBtn.disabled = false;
+      workModePolygonBtn.style.opacity = '1';
+      workModePolygonBtn.style.cursor = 'pointer';
+    }
+
+    function clearPolygonDraft() {
+      polygonDraft = [];
+      if (polygonDraftLine) { map.removeLayer(polygonDraftLine); polygonDraftLine = null; }
+      if (polygonPreview) { map.removeLayer(polygonPreview); polygonPreview = null; }
+      draw();
+    }
+
+    function pointInPolygonMeters(pt, poly) {
+      // Ray casting. poly: [{x,y}, ...]
+      let inside = false;
+      for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+        const xi = poly[i].x, yi = poly[i].y;
+        const xj = poly[j].x, yj = poly[j].y;
+        const intersect = ((yi > pt.y) !== (yj > pt.y)) && (pt.x < (xj - xi) * (pt.y - yi) / ((yj - yi) || 1e-12) + xi);
+        if (intersect) inside = !inside;
+      }
+      return inside;
+    }
+
+    function latLngToLocalMetersAt(lat, lng, lat0, lng0) {
+      const enu = geodeticToEnu(
+        { lat, lng, alt: 0 },
+        { lat: lat0, lng: lng0, alt: 0 }
+      );
+      return { x: enu.east, y: enu.north };
+    }
+
+    function localMetersToLatLngAt(x, y, lat0, lng0) {
+      const point = enuToGeodetic(
+        { east: x, north: y, up: 0 },
+        { lat: lat0, lng: lng0, alt: 0 }
+      );
+      return { lat: point.lat, lng: point.lng };
+    }
+
+    function deployNodesInPolygon() {
+      if (scenario !== 'fixed') return;
+      if (polygonDraft.length < 3) return;
+
+      const radiusMeters = parseFloat(circleRadiusSelect.value) || 10;
+      const lat0 = polygonDraft[0].lat;
+      const lng0 = polygonDraft[0].lng;
+
+      // Persist the finished polygon on the map (allow multiple deploy regions)
+      const deployed = L.polygon(polygonDraft, { color: POLYGON_STROKE, weight: 2, fillColor: POLYGON_FILL, fillOpacity: 0.06 });
+      deployed.addTo(map);
+      deployedPolygons.push(deployed);
+
+      // Convert polygon to local meters
+      const polyM = polygonDraft.map(ll => latLngToLocalMetersAt(ll.lat, ll.lng, lat0, lng0));
+      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+      for (const p of polyM) { minX = Math.min(minX, p.x); minY = Math.min(minY, p.y); maxX = Math.max(maxX, p.x); maxY = Math.max(maxY, p.y); }
+
+      // Hex grid coverage (approx. minimal for equal circles)
+      // Connectivity-focused hex grid:
+      // Make nearest-neighbor distance = Circle Radius (communication range).
+      // Lattice vectors: (d,0) and (d/2, sqrt(3)*d/2) where d = radiusMeters.
+      const spacingX = radiusMeters;
+      const spacingY = (Math.sqrt(3) / 2) * radiusMeters;
+
+      const candidates = [];
+      let row = 0;
+      for (let y = minY; y <= maxY; y += spacingY, row++) {
+        const xOffset = (row % 2) ? (spacingX / 2) : 0;
+        for (let x = minX; x <= maxX; x += spacingX) {
+          const pt = { x: x + xOffset, y };
+          if (pointInPolygonMeters(pt, polyM)) candidates.push(pt);
+        }
+      }
+
+      commitHistory();
+      const startNodeId = positions.length > 0 ? (Math.max(...positions.map(p => p.nodeId || 1)) + 1) : (parseInt(nodeInput.value) || 1);
+      // Append nodes so multiple polygons can deploy into the same project
+      const newPositions = candidates.map((m, idx) => {
+        const ll = localMetersToLatLngAt(m.x, m.y, lat0, lng0);
+        return { lat: ll.lat, lng: ll.lng, nodeId: startNodeId + idx, time: 0, z: 0, timeGenerated: true };
+      });
+      setPositions(positions.concat(newPositions));
+      selected.clear();
+      lastClickedIndex = positions.length ? 0 : -1;
+      refreshLatLngInput();
+
+      updateOutput();
+      draw();
+      clearPolygonDraft();
+    }
+
+    function polygonScanSegmentsAtY(polyM, y) {
+      const xs = [];
+      for (let i = 0; i < polyM.length; i++) {
+        const a = polyM[i];
+        const b = polyM[(i + 1) % polyM.length];
+        const y1 = a.y, y2 = b.y;
+        if ((y1 <= y && y < y2) || (y2 <= y && y < y1)) {
+          const t = (y - y1) / ((y2 - y1) || 1e-12);
+          xs.push(a.x + t * (b.x - a.x));
+        }
+      }
+      xs.sort((p, q) => p - q);
+      const segs = [];
+      for (let i = 0; i + 1 < xs.length; i += 2) segs.push([xs[i], xs[i + 1]]);
+      return segs;
+    }
+
+    function polygonScanSegmentsAtX(polyM, x) {
+      const ys = [];
+      for (let i = 0; i < polyM.length; i++) {
+        const a = polyM[i];
+        const b = polyM[(i + 1) % polyM.length];
+        const x1 = a.x, x2 = b.x;
+        if ((x1 <= x && x < x2) || (x2 <= x && x < x1)) {
+          const t = (x - x1) / ((x2 - x1) || 1e-12);
+          ys.push(a.y + t * (b.y - a.y));
+        }
+      }
+      ys.sort((p, q) => p - q);
+      const segs = [];
+      for (let i = 0; i + 1 < ys.length; i += 2) segs.push([ys[i], ys[i + 1]]);
+      return segs;
+    }
+
+    function deployMobileScanPathInPolygon() {
+      if (scenario !== 'mobile') return;
+      if (polygonDraft.length < 3) return;
+
+      const radiusMeters = parseFloat(circleRadiusSelect.value) || 10;
+      const step = radiusMeters; // waypoint step along the scan line
+      const passSpacing = radiusMeters; // distance between scan passes
+      const lat0 = polygonDraft[0].lat;
+      const lng0 = polygonDraft[0].lng;
+
+      // Persist polygon outline on map (like Static)
+      const deployed = L.polygon(polygonDraft, { color: POLYGON_STROKE, weight: 2, fillColor: POLYGON_FILL, fillOpacity: 0.06 });
+      deployed.addTo(map);
+      deployedPolygons.push(deployed);
+
+      // Convert polygon to local meters
+      const polyM = polygonDraft.map(ll => latLngToLocalMetersAt(ll.lat, ll.lng, lat0, lng0));
+      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+      for (const p of polyM) { minX = Math.min(minX, p.x); minY = Math.min(minY, p.y); maxX = Math.max(maxX, p.x); maxY = Math.max(maxY, p.y); }
+
+      const pathM = [];
+      let forward = true;
+      if (mobileScanDirection === 'horizontal') {
+        for (let y = minY; y <= maxY; y += passSpacing) {
+          const segs = polygonScanSegmentsAtY(polyM, y);
+          for (const [x0, x1] of segs) {
+            const from = forward ? x0 : x1;
+            const to = forward ? x1 : x0;
+            const dir = Math.sign(to - from) || 1;
+            for (let x = from; dir > 0 ? x <= to : x >= to; x += dir * step) {
+              const pt = { x, y };
+              if (pointInPolygonMeters(pt, polyM)) pathM.push(pt);
+            }
+            forward = !forward;
+          }
+        }
+      } else {
+        for (let x = minX; x <= maxX; x += passSpacing) {
+          const segs = polygonScanSegmentsAtX(polyM, x);
+          for (const [y0, y1] of segs) {
+            const from = forward ? y0 : y1;
+            const to = forward ? y1 : y0;
+            const dir = Math.sign(to - from) || 1;
+            for (let y = from; dir > 0 ? y <= to : y >= to; y += dir * step) {
+              const pt = { x, y };
+              if (pointInPolygonMeters(pt, polyM)) pathM.push(pt);
+            }
+            forward = !forward;
+          }
+        }
+      }
+
+      // Determine fixed mobile nodeId
+      const nodeId = positions.length > 0 ? (positions[0].nodeId || parseInt(nodeInput.value) || 1) : (parseInt(nodeInput.value) || 1);
+      const interval = intervalSeconds();
+
+      commitHistory();
+      setPositions(pathM.map((m, index) => {
+        const ll = localMetersToLatLngAt(m.x, m.y, lat0, lng0);
+        return { lat: ll.lat, lng: ll.lng, nodeId, time: index * interval, z: 0, timeGenerated: true };
+      }));
+      selected.clear();
+      lastClickedIndex = positions.length ? 0 : -1;
+      refreshLatLngInput();
+      updateOutput();
+      draw();
+      clearPolygonDraft();
+
+    }
+
+    // === Scenario Selection ===
+    function updatePolygonMobileControlsVisibility() {
+      const polygonMobileControls = document.getElementById('polygonMobileControls');
+      if (!polygonMobileControls) return;
+      polygonMobileControls.style.display = (mode === 'polygon' && scenario === 'mobile') ? 'block' : 'none';
+    }
+
+    function updateScenario(value) {
+      if (value !== 'mobile' && value !== 'fixed') return;
+      if (value !== scenario) commitHistory();
+      scenario = value;
+      scenarioModel.scenario = value;
+      scenarioMobileBtn.classList.toggle('active', value === 'mobile');
+      scenarioFixedBtn.classList.toggle('active', value === 'fixed');
+      setPolygonUiEnabled();
+      updatePolygonMobileControlsVisibility();
+
+      // A mobile trajectory belongs to one node; retain its stored timestamps.
+      if (value === 'mobile' && positions.length > 0) {
+        const firstNodeId = positions[0].nodeId || 1;
+        positions.forEach(p => { p.nodeId = firstNodeId; });
+      }
+
+      refreshLatLngInput();
+      draw();
+      updateOutput();
+    }
+
+    scenarioMobileBtn.addEventListener('click', () => {
+      updateScenario('mobile');
+    });
+
+    scenarioFixedBtn.addEventListener('click', () => {
+      updateScenario('fixed');
+    });
+
+    // === Mode Selection ===
+    function updateWorkMode(value) {
+      mode = value;
+      workModeMapsBtn.classList.toggle('active', value === 'maps');
+      workModePointBtn.classList.toggle('active', value === 'point');
+      if (workModePolygonBtn) workModePolygonBtn.classList.toggle('active', value === 'polygon');
+      const polygonModeHint = document.getElementById('polygonModeHint');
+      if (polygonModeHint) polygonModeHint.style.display = (value === 'polygon' ? 'block' : 'none');
+      updatePolygonMobileControlsVisibility();
+
+      if (mode === 'maps') {
+        // Maps mode: Enable map dragging and zooming
+        map.dragging.enable();
+        map.touchZoom.enable();
+        map.doubleClickZoom.enable();
+        map.scrollWheelZoom.enable();
+        map.boxZoom.enable();
+        map.keyboard.enable();
+        clearPolygonDraft();
+      } else if (mode === 'point' || mode === 'polygon') {
+        // Point/Polygon modes: Disable map dragging and zooming
+        map.dragging.disable();
+        map.touchZoom.disable();
+        map.doubleClickZoom.disable();
+        map.scrollWheelZoom.disable();
+        map.boxZoom.disable();
+        map.keyboard.disable();
+      }
+      draw();
+    }
+
+    workModeMapsBtn.addEventListener('click', () => {
+      updateWorkMode('maps');
+    });
+
+    workModePointBtn.addEventListener('click', () => {
+      updateWorkMode('point');
+    });
+    if (workModePolygonBtn) {
+      workModePolygonBtn.addEventListener('click', () => {
+        clearPolygonDraft();
+        updateWorkMode('polygon');
+      });
+    }
+
+    // Initialize mode
+    updateWorkMode('maps');
+    setPolygonUiEnabled();
+
+    // === Map-mode interactions ===
+    map.on('mousemove', (e)=>{
+      if (mode === 'point') {
+        // Node dragging
+        if (draggingNodeIndex >= 0 && selected.size > 0) {
+          wasDragging = true;
+          const currentLatLng = e.latlng;
+          const startLatLng = [preDragSnapshot.positions[draggingNodeIndex].lat, preDragSnapshot.positions[draggingNodeIndex].lng];
+          const latOffset = currentLatLng.lat - startLatLng[0];
+          const lngOffset = currentLatLng.lng - startLatLng[1];
+          for (const si of selectedInitial) {
+            positions[si.idx].lat = si.lat + latOffset;
+            positions[si.idx].lng = si.lng + lngOffset;
+          }
+          draw();
+        }
+        // Rectangle selection update
+        else if (isSelectingRect && selStartS) {
+          const pt = map.latLngToContainerPoint(e.latlng);
+          selEndS = { x: pt.x, y: pt.y };
+          draw();
+        }
+      } else if (mode === 'polygon') {
+        // Update polygon draft line to current mouse position for visual feedback
+        if (polygonDraft.length > 0 && polygonDraftLine) {
+          const latlngs = polygonDraft.concat([e.latlng]);
+          polygonDraftLine.setLatLngs(latlngs);
+        }
+      }
+    });
+
+    map.on('mousedown', (e)=>{
+      // Only allow node editing in point mode
+      if (mode === 'point') {
+        const pt = map.latLngToContainerPoint(e.latlng);
+        const i = hitTestNodeMap(pt.x, pt.y);
+
+        // Ctrl + Click: Point selection (single or multi with Shift)
+        if (e.originalEvent.ctrlKey || e.originalEvent.metaKey) {
+          isCtrlSelection = true;
+          if (i >= 0) {
+            // Toggle selection with Shift, replace selection without Shift
+            if (e.originalEvent.shiftKey) {
+              if (selected.has(i)) {
+                selected.delete(i);
+              } else {
+                selected.add(i);
+              }
+            } else {
+              if (!selected.has(i)) {
+                selected.clear();
+                selected.add(i);
+              }
+            }
+            lastClickedIndex = i; // Update last clicked index
+            draw();
+          } else {
+            // Ctrl + Click on empty area: Start rectangle selection
+            isSelectingRect = true;
+            selStartS = { x: pt.x, y: pt.y };
+            selEndS = { x: pt.x, y: pt.y };
+            if (!e.originalEvent.shiftKey) {
+              selected.clear();
+            }
+          }
+        }
+        // Normal Click on selected node: Start dragging
+        else if (i >= 0 && selected.has(i)) {
+          isCtrlSelection = false;
+          draggingNodeIndex = i;
+          preDragSnapshot = snapshot();
+          selectedInitial = Array.from(selected).map(idx => ({
+            idx,
+            lat: positions[idx].lat,
+            lng: positions[idx].lng
+          }));
+          dragStartPx = map.latLngToContainerPoint([positions[i].lat, positions[i].lng]);
+          wasDragging = false;
+          map.dragging.disable();
+        }
+        // Normal Click on empty area: Prepare for point addition
+        else {
+          isCtrlSelection = false;
+          isSelectingRect = true;
+          selStartS = { x: pt.x, y: pt.y };
+          selEndS = { x: pt.x, y: pt.y };
+          window.mouseDownLatLng = e.latlng;
+        }
+      } else if (mode === 'polygon') {
+        // Fixed only: add polygon vertices with click
+        if (scenario !== 'fixed' && scenario !== 'mobile') {
+          return;
+        }
+        polygonDraft.push(e.latlng);
+        if (!polygonDraftLine) {
+          polygonDraftLine = L.polyline(polygonDraft, { color: POLYGON_STROKE, weight: 2, dashArray: '4 4' }).addTo(map);
+        } else {
+          polygonDraftLine.setLatLngs(polygonDraft);
+        }
+        if (polygonPreview) {
+          map.removeLayer(polygonPreview);
+          polygonPreview = null;
+        }
+        if (polygonDraft.length >= 3) {
+          polygonPreview = L.polygon(polygonDraft, { color: POLYGON_STROKE, weight: 2, fillColor: POLYGON_FILL, fillOpacity: 0.08 }).addTo(map);
+        }
+      }
+    });
+
+    map.on('dblclick', (e) => {
+      if (mode === 'polygon') {
+        if (scenario === 'fixed') deployNodesInPolygon();
+        else if (scenario === 'mobile') deployMobileScanPathInPolygon();
+      }
+    });
+
+    // Polygon mode keyboard shortcuts (Fixed only): Enter = finish, Esc = cancel
+    window.addEventListener('keydown', (e) => {
+      if (mode !== 'polygon') return;
+      if (scenario !== 'fixed' && scenario !== 'mobile') return;
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        clearPolygonDraft();
+        return;
+      }
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        if (scenario === 'fixed') deployNodesInPolygon();
+        else if (scenario === 'mobile') deployMobileScanPathInPolygon();
+      }
+    });
+
+    if (scanDirHorizontalBtn && scanDirVerticalBtn) {
+      const setDir = (dir) => {
+        mobileScanDirection = dir;
+        scanDirHorizontalBtn.classList.toggle('active', dir === 'horizontal');
+        scanDirVerticalBtn.classList.toggle('active', dir === 'vertical');
+      };
+      scanDirHorizontalBtn.addEventListener('click', () => setDir('horizontal'));
+      scanDirVerticalBtn.addEventListener('click', () => setDir('vertical'));
+      setDir(mobileScanDirection);
+    }
+
+    map.on('mouseup', (e)=>{
+      if (mode === 'point') {
+        if (draggingNodeIndex >= 0) {
+          // Finish dragging
+          const before = JSON.stringify(preDragSnapshot.positions);
+          const after = JSON.stringify(positions);
+          if (before !== after) commitHistory(preDragSnapshot);
+          refreshLatLngInput();
+          updateOutput();
+        }
+        else if (isSelectingRect) {
+          const dx = Math.abs(selEndS.x - selStartS.x);
+          const dy = Math.abs(selEndS.y - selStartS.y);
+          const dragged = (dx + dy) > 4;
+
+          // Ctrl + Rectangle selection: Select points in rectangle
+          if (isCtrlSelection) {
+            if (dragged) {
+              const minX = Math.min(selStartS.x, selEndS.x);
+              const maxX = Math.max(selStartS.x, selEndS.x);
+              const minY = Math.min(selStartS.y, selEndS.y);
+              const maxY = Math.max(selStartS.y, selEndS.y);
+
+              // Add to selection if Shift, replace if not
+              if (!e.originalEvent.shiftKey) {
+                selected.clear();
+              }
+
+              positions.forEach((p, idx) => {
+                const s = map.latLngToContainerPoint([p.lat, p.lng]);
+                if (s.x >= minX && s.x <= maxX && s.y >= minY && s.y <= maxY) {
+                  selected.add(idx);
+                }
+              });
+              draw();
+            }
+          }
+          // Normal Click: Add new point
+          else if (window.mouseDownLatLng && !dragged) {
+            commitHistory();
+            const lat = window.mouseDownLatLng.lat;
+            const lng = window.mouseDownLatLng.lng;
+
+            // Calculate next nodeId based on scenario
+            let nextNodeId;
+            if (scenario === 'mobile') {
+              // Mobile mode: Use the same nodeId for all nodes
+              if (positions.length > 0) {
+                nextNodeId = positions[0].nodeId || parseInt(nodeInput.value) || 1;
+              } else {
+                nextNodeId = parseInt(nodeInput.value) || 1;
+              }
+            } else {
+              // Fixed mode: Increment nodeId for each new node
+              nextNodeId = parseInt(nodeInput.value) || 1;
+              if (positions.length > 0) {
+                const maxNodeId = Math.max(...positions.map(p => p.nodeId || 1));
+                nextNodeId = maxNodeId + 1;
+              }
+            }
+
+            const pointIndex = positions.length;
+            positions.push(canonicalWaypoint({
+              lat,
+              lng,
+              nodeId: nextNodeId,
+              time: scenario === 'fixed' ? 0 : pointIndex * intervalSeconds(),
+              z: 0,
+              timeGenerated: true
+            }, pointIndex));
+            selected.clear();
+            selected.add(positions.length - 1);
+            lastClickedIndex = positions.length - 1;
+            refreshLatLngInput();
+            updateOutput();
+
+            // Scroll to bottom
+            latlngInput.scrollTop = latlngInput.scrollHeight;
+
+            // Save map location to cookie when adding a point
+            saveMapLocation();
+
+            draw();
+          }
+        }
+      }
+
+      // Re-enable dragging only in maps mode
+      if (mode === 'maps') {
+        map.dragging.enable();
+      }
+
+      // Reset state
+      draggingNodeIndex = -1;
+      selectedInitial = null;
+      preDragSnapshot = null;
+      isSelectingRect = false;
+      selStartS = selEndS = null;
+      window.mouseDownLatLng = null;
+      isCtrlSelection = false;
+      setTimeout(() => { wasDragging = false; }, 50);
+      draw();
+    });
+
+    map.on('move zoom', ()=>{
+      requestAnimationFrame(() => {
+        draw();
+      });
+    });
+
+    map.on('zoomend', ()=>{
+      draw();
+    });
+
+    // Context menu on right click
+    map.on('contextmenu', (e) => {
+      e.originalEvent.preventDefault();
+      if (mode !== 'point') return;
+
+      const pt = map.latLngToContainerPoint(e.latlng);
+      const i = hitTestNodeMap(pt.x, pt.y);
+
+      if (i >= 0) {
+        contextMenuNodeIndex = i;
+        selected.clear();
+        selected.add(i);
+        lastClickedIndex = i;
+        draw();
+
+        // Show context menu at mouse position
+        contextMenu.style.left = e.originalEvent.clientX + 'px';
+        contextMenu.style.top = e.originalEvent.clientY + 'px';
+        contextMenu.classList.add('show');
+      } else {
+        contextMenu.classList.remove('show');
+      }
+    });
+
+    // Close context menu when clicking elsewhere
+    document.addEventListener('click', (e) => {
+      if (!contextMenu.contains(e.target)) {
+        contextMenu.classList.remove('show');
+      }
+    });
+
+    // Context menu actions
+    renameNodeItem.addEventListener('click', () => {
+      if (contextMenuNodeIndex >= 0 && contextMenuNodeIndex < positions.length) {
+        const position = positions[contextMenuNodeIndex];
+        const currentId = position.nodeId || (contextMenuNodeIndex + 1);
+        const newId = prompt('Enter new Node ID:', currentId);
+        if (newId !== null && !isNaN(parseInt(newId))) {
+          commitHistory();
+          const newNodeId = parseInt(newId);
+
+          if (scenario === 'mobile') {
+            // Mobile mode: Update all nodes to have the same nodeId
+            positions.forEach(p => {
+              p.nodeId = newNodeId;
+            });
+          } else {
+            // Fixed mode: Update only the selected node
+            positions[contextMenuNodeIndex].nodeId = newNodeId;
+          }
+
+          refreshLatLngInput();
+
+          draw();
+          updateOutput();
+        }
+      }
+      contextMenu.classList.remove('show');
+    });
+
+    deleteNodeItem.addEventListener('click', () => {
+      if (contextMenuNodeIndex >= 0) {
+        selected.clear();
+        selected.add(contextMenuNodeIndex);
+        deleteSelected();
+      }
+      contextMenu.classList.remove('show');
+    });
+
+    // Add Ctrl+mouse wheel zoom functionality (only in maps mode)
+    map.getContainer().addEventListener('wheel', (e) => {
+      if (mode === 'maps' && e.ctrlKey) {
+        e.preventDefault();
+        const rect = map.getContainer().getBoundingClientRect();
+        const mouseX = e.clientX - rect.left;
+        const mouseY = e.clientY - rect.top;
+        const mouseLatLng = map.containerPointToLatLng([mouseX, mouseY]);
+        const zoomIn = e.deltaY < 0;
+        const currentZoom = map.getZoom();
+        const newZoom = zoomIn ? currentZoom + 1 : currentZoom - 1;
+        const clampedZoom = Math.max(1, Math.min(19, newZoom));
+        map.setView(mouseLatLng, clampedZoom);
+      }
+    }, { passive: false });
+
+    // Keyboard
+    window.addEventListener('keydown', (e)=>{
+      const mapKeys = allowMapSelectionShortcuts(e);
+
+      if (mapKeys && e.key === 'Escape' && mode === 'point' && selected.size > 0) {
+        e.preventDefault();
+        selected.clear();
+        lastClickedIndex = -1;
+        draw();
+        return;
+      }
+
+      if (mapKeys && (e.key === 'Backspace' || e.key === 'Delete')) { e.preventDefault(); deleteSelected(); }
+
+      if (mapKeys && (e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'a') {
+        e.preventDefault();
+        if (mode === 'point' && positions.length > 0 && selected.size === positions.length) {
+          selected.clear();
+          lastClickedIndex = -1;
+        } else {
+          selected = new Set(positions.map((_, idx) => idx));
+        }
+        draw();
+        return;
+      }
+
+      if (mapKeys && (e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase()==='z'){ e.preventDefault(); undo(); }
+      else if (mapKeys && (e.ctrlKey || e.metaKey) && (e.key.toLowerCase()==='y' || (e.shiftKey && e.key.toLowerCase()==='z'))){ e.preventDefault(); redo(); }
+    });
+
+    function undo(){ if (!undoStack.length) return; const curr=snapshot(); const prev=undoStack.pop(); redoStack.push(curr); restore(prev); }
+    function redo(){ if (!redoStack.length) return; const curr=snapshot(); const next=redoStack.pop(); undoStack.push(curr); restore(next); }
+
+    undoBtn.addEventListener('click', ()=>{ undo(); });
+    redoBtn.addEventListener('click', ()=>{ redo(); });
+
+    function deleteSelected(){
+      if (!selected.size) return;
+      commitHistory();
+      // Update lastClickedIndex if deleted point was the last clicked
+      if (selected.has(lastClickedIndex)) {
+        lastClickedIndex = -1;
+      } else if (lastClickedIndex >= 0) {
+        // Adjust lastClickedIndex if points before it were deleted
+        let adjustment = 0;
+        for (let i = 0; i < lastClickedIndex; i++) {
+          if (selected.has(i)) adjustment++;
+        }
+        lastClickedIndex -= adjustment;
+      }
+      setPositions(positions.filter((_,idx)=>!selected.has(idx)));
+      selected.clear();
+      refreshLatLngInput();
+
+      draw();
+      updateOutput();
+    }
+
+    resetBtn.addEventListener('click', ()=>{
+      commitHistory();
+      setPositions([]);
+      selected.clear();
+      lastClickedIndex = -1;
+      refreshLatLngInput();
+      // Clear persisted polygons as well
+      if (deployedPolygons && deployedPolygons.length) {
+        deployedPolygons.forEach(p => { try { map.removeLayer(p); } catch {} });
+        deployedPolygons = [];
+      }
+      clearPolygonDraft();
+      updateOutput();
+      draw();
+    });
+    saveBtn.addEventListener('click', () => {
+      if (output.dataset.kind !== 'export') {
+        alert('Choose a simulator and press Convert before saving.');
+        return;
+      }
+      const filename = output.dataset.exportFilename;
+      const mimeType = output.dataset.exportMimeType || 'text/plain';
+      const blob = new Blob([output.textContent], { type: mimeType });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename || 'simulator-export.txt';
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 0);
+    });
+    uploadBtn.addEventListener('click', ()=>{ uploadInput.click(); });
+    copyOutputBtn.addEventListener('click', async ()=>{
+      try {
+        await navigator.clipboard.writeText(output.textContent);
+        const originalText = copyOutputBtn.textContent;
+        copyOutputBtn.textContent = 'Copied!';
+        copyOutputBtn.style.backgroundColor = '#4CAF50';
+        copyOutputBtn.style.color = 'white';
+        setTimeout(() => {
+          copyOutputBtn.textContent = originalText;
+          copyOutputBtn.style.backgroundColor = '';
+          copyOutputBtn.style.color = '';
+        }, 2000);
+      } catch (err) {
+        console.error('Copy failed:', err);
+        // Fallback for older browsers
+        const textArea = document.createElement('textarea');
+        textArea.value = output.textContent;
+        textArea.style.position = 'fixed';
+        textArea.style.opacity = '0';
+        document.body.appendChild(textArea);
+        textArea.select();
+        try {
+          document.execCommand('copy');
+          const originalText = copyOutputBtn.textContent;
+          copyOutputBtn.textContent = 'Copied!';
+          copyOutputBtn.style.backgroundColor = '#4CAF50';
+          copyOutputBtn.style.color = 'white';
+          setTimeout(() => {
+            copyOutputBtn.textContent = originalText;
+            copyOutputBtn.style.backgroundColor = '';
+            copyOutputBtn.style.color = '';
+          }, 2000);
+        } catch (fallbackErr) {
+          console.error('Fallback copy failed:', fallbackErr);
+          alert('Copy failed. Please select and copy the content manually.');
+        }
+        document.body.removeChild(textArea);
+      }
+    });
+
+    uploadInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (evt) => {
+        let parsedImport;
+        try {
+          parsedImport = getAdapter('cooja').parse(String(evt.target.result), { scenario });
+        } catch (error) {
+          const details = error instanceof AdapterValidationError ? error.errors.join('\n• ') : error.message;
+          alert(`Cannot import Cooja positions:\n• ${details}`);
+          uploadInput.value = '';
+          return;
+        }
+
+        commitHistory();
+        let importOrigin;
+        try {
+          if (scenarioModel.origin.mode === 'custom') {
+            importOrigin = readCustomOrigin();
+          } else {
+            const center = map.getCenter();
+            importOrigin = { lat: center.lat, lng: center.lng, alt: 0 };
+            setCustomOrigin(importOrigin);
+            originStatus.textContent += ' Imported XY data was anchored here because .dat does not store a geographic origin.';
+          }
+        } catch (error) {
+          alert(error.message);
+          return;
+        }
+
+        const imported = parsedImport.waypoints.map(localPoint => {
+          const ll = enuToGeodetic(
+            { east: localPoint.x, north: localPoint.y, up: localPoint.z },
+            importOrigin
+          );
+          return {
+            lat: ll.lat,
+            lng: ll.lng,
+            nodeId: localPoint.nodeId,
+            time: localPoint.time,
+            z: localPoint.z,
+            timeGenerated: false
+          };
+        });
+
+        setPositions(imported);
+        selected.clear();
+        lastClickedIndex = -1;
+        refreshLatLngInput();
+        if (positions.length) {
+          map.fitBounds(L.latLngBounds(positions.map(p => [p.lat, p.lng])), { padding: [50, 50], maxZoom: 18 });
+        }
+        updateOutput();
+        draw();
+        uploadInput.value = '';
+      };
+      reader.readAsText(file);
+    });
+
+    function calcMetersPerPixel(lat, zoom){ const earthCircumference = 40075016.686; return Math.cos(lat*Math.PI/180) * earthCircumference / Math.pow(2, zoom+8); }
+
+    function draw(){
+      const rect = stage.getBoundingClientRect();
+      if (canvas.width !== rect.width || canvas.height !== rect.height) {
+        canvas.width = rect.width;
+        canvas.height = rect.height;
+      }
+      ctx.clearRect(0,0,canvas.width, canvas.height);
+
+      const rPx = nodeRadiusPx(); let index=1;
+      // Draw route links only in Mobile scenario (movement path).
+      // In Static scenario, we don't know actual connectivity, so we draw no links.
+      if (scenario === 'mobile' && positions.length>1){
+        ctx.beginPath(); ctx.strokeStyle=ROUTE_STROKE; ctx.lineWidth=1.5;
+        let s = map.latLngToContainerPoint([positions[0].lat, positions[0].lng]);
+        ctx.moveTo(s.x, s.y);
+        for (let i=1;i<positions.length;i++){
+          s = map.latLngToContainerPoint([positions[i].lat, positions[i].lng]);
+          ctx.lineTo(s.x, s.y);
+        }
+        ctx.stroke();
+      }
+      for (let i=0;i<positions.length;i++){
+        const p=positions[i];
+        const s=map.latLngToContainerPoint([p.lat, p.lng]);
+        const nodeId = p.nodeId || (i + 1);
+        const nodeIdStr = String(nodeId);
+        const baseRadius = 10; // Doubled from 5
+        const idLength = nodeIdStr.length;
+        let nodeRadius = baseRadius;
+        if (idLength <= 2) nodeRadius = baseRadius;
+        else if (idLength <= 3) nodeRadius = baseRadius + 4; // Doubled from +2
+        else if (idLength <= 4) nodeRadius = baseRadius + 8; // Doubled from +4
+        else nodeRadius = baseRadius + 12; // Doubled from +6
+        drawNodeCircle(s.x, s.y, nodeRadius, i+1);
+      }
+      // Circle Radius ring for every selected node (communication range visualization)
+      const radiusMeters = parseFloat(circleRadiusSelect.value) || 10;
+      if (selected.size > 0) {
+        for (const idx of selected) {
+          if (idx < 0 || idx >= positions.length) continue;
+          const pt = positions[idx];
+          const centerPx = map.latLngToContainerPoint([pt.lat, pt.lng]);
+          const metersPerPixel = calcMetersPerPixel(pt.lat, map.getZoom());
+          const radiusPx = radiusMeters / metersPerPixel;
+          const isLastFocus = (idx === lastClickedIndex);
+          ctx.save();
+          ctx.beginPath();
+          ctx.strokeStyle = isLastFocus ? 'rgba(220, 130, 0, 0.95)' : 'rgba(255, 165, 0, 0.85)';
+          ctx.lineWidth = isLastFocus ? 2 : 1.5;
+          ctx.setLineDash([6, 5]);
+          ctx.arc(centerPx.x, centerPx.y, radiusPx, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.restore();
+        }
+      } else if (lastClickedIndex >= 0 && lastClickedIndex < positions.length) {
+        // No explicit multi-select: show range ring for last focused node
+        const lastPoint = positions[lastClickedIndex];
+        const centerPx = map.latLngToContainerPoint([lastPoint.lat, lastPoint.lng]);
+        const metersPerPixel = calcMetersPerPixel(lastPoint.lat, map.getZoom());
+        const radiusPx = radiusMeters / metersPerPixel;
+        ctx.save();
+        ctx.beginPath();
+        ctx.strokeStyle = 'rgba(220, 130, 0, 0.9)';
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([5, 5]);
+        ctx.arc(centerPx.x, centerPx.y, radiusPx, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+      }
+      if (isSelectingRect && selStartS && selEndS){ drawSelectionRect(selStartS.x, selStartS.y, selEndS.x, selEndS.y); }
+    }
+
+    function drawNodeCircle(cx, cy, rPx, index){
+      ctx.beginPath(); ctx.fillStyle=NODE_STYLE.fill; ctx.strokeStyle=NODE_STYLE.stroke; ctx.lineWidth=NODE_STYLE.strokeWidth;
+      ctx.arc(cx, cy, rPx, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+      const idx=index-1;
+      // Selection is shown via Circle Radius rings in draw(); avoid double outline on the node disk.
+      // Use Node ID from position object
+      const position = positions[idx];
+      const nodeId = position && position.nodeId ? String(position.nodeId) : String(idx + 1);
+      const label = nodeId;
+      const fontSize=fitFontToCircle(label, rPx, 16); // Doubled from 8
+      ctx.font=`bold ${fontSize}px Arial`; ctx.fillStyle=NODE_STYLE.label; ctx.textAlign='center'; ctx.textBaseline='middle';
+      ctx.fillText(label, cx, cy);
+    }
+
+    function drawSelectionRect(x1,y1,x2,y2){
+      const x=Math.min(x1,x2), y=Math.min(y1,y2), w=Math.abs(x2-x1), h=Math.abs(y2-y1);
+      ctx.save(); ctx.fillStyle='rgba(0,120,215,0.15)'; ctx.strokeStyle='rgba(0,120,215,0.9)'; ctx.lineWidth=1.2;
+      ctx.fillRect(x,y,w,h); ctx.strokeRect(x,y,w,h); ctx.restore();
+    }
+
+    // Simulator-specific validation and serialization live in simulator-adapters.js.
+
+    function showExportCompatibilityWarnings(warnings = []) {
+      if (!exportCompatibilityNotice) return;
+      if (!warnings.length) {
+        exportCompatibilityNotice.hidden = true;
+        exportCompatibilityNotice.textContent = '';
+        return;
+      }
+      exportCompatibilityNotice.textContent = `⚠ ${warnings.join(' ')}`;
+      exportCompatibilityNotice.hidden = false;
+    }
+
+    function refreshSimulatorExportUi() {
+      if (!simExportSelect || !convertBtn) return;
+      const adapter = getAdapter(simExportSelect.value);
+      convertBtn.innerHTML = `Convert to ${adapter.label}<span aria-hidden="true" style="margin-left: 6px; font-weight: bold;">⬇</span>`;
+      if (outputHeaderLabel) {
+        outputHeaderLabel.innerHTML = `<b>Output preview — ${adapter.outputHint}</b>`;
+      }
+      showExportCompatibilityWarnings();
+    }
+
+    function updateOutput(){
+      showExportCompatibilityWarnings();
+      output.dataset.kind = 'source';
+      delete output.dataset.exportTool;
+      delete output.dataset.exportFilename;
+      delete output.dataset.exportMimeType;
+      if (positions.length === 0) {
+        output.textContent = '<node_id> <time> <latitude> <longitude>\n\nEdit map or paste rows above, then choose simulator and Convert.\nExample:\n1 0.000000000 41.286700000 36.330000000\n1 1.000000000 41.287000000 36.331000000';
+        output.style.color = '#999';
+        return;
+      }
+      output.style.color = '';
+      output.textContent = formatWaypointRows();
+    }
+
+    circleRadiusSelect.addEventListener('change', () => { draw(); });
+
+    simExportSelect.addEventListener('change', () => {
+      refreshSimulatorExportUi();
+      updateOutput();
+    });
+
+    convertBtn.addEventListener('click', () => {
+      const text = latlngInput.value.trim();
+      if (!text) {
+        updateOutput();
+        return;
+      }
+
+      const parsedPoints = [];
+      const invalidRows = [];
+      const lines = text.split(/\r?\n/);
+      lines.forEach((line, index) => {
+        if (!line.trim()) return;
+        const parts = line.trim().split(/\s+/);
+        const nodeId = Number.parseInt(parts[0], 10);
+        const time = Number.parseFloat(parts[1]);
+        const lat = Number.parseFloat(parts[2]);
+        const lng = Number.parseFloat(parts[3]);
+        const z = parts.length > 4 ? Number.parseFloat(parts[4]) : 0;
+        const valid = parts.length >= 4 && Number.isInteger(nodeId) && nodeId >= 1 &&
+          [time, lat, lng, z].every(Number.isFinite) &&
+          lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180;
+        if (!valid) {
+          invalidRows.push(index + 1);
+          return;
+        }
+        parsedPoints.push({ nodeId, time: scenario === 'fixed' ? 0 : time, lat, lng, z, timeGenerated: false });
+      });
+
+      if (invalidRows.length) {
+        alert(`Invalid latitude/longitude input row(s): ${invalidRows.join(', ')}. Expected: <node_id> <time> <latitude> <longitude> [altitude].`);
+        return;
+      }
+      if (!parsedPoints.length) {
+        updateOutput();
+        return;
+      }
+
+      if (scenario === 'mobile') {
+        const mobileNodeId = parsedPoints[0].nodeId;
+        parsedPoints.forEach(point => { point.nodeId = mobileNodeId; });
+      }
+      setPositions(parsedPoints);
+      refreshLatLngInput();
+
+      let origin;
+      try {
+        origin = resolveOrigin(parsedPoints);
+      } catch (error) {
+        alert(error.message);
+        return;
+      }
+
+      // WGS84 ECEF -> local ENU. This is independent of map center, pan and zoom.
+      const localPoints = parsedPoints.map(p => {
+        const enu = geodeticToEnu({ lat: p.lat, lng: p.lng, alt: p.z }, origin);
+        return {
+          nodeId: p.nodeId,
+          time: p.time,
+          x: enu.east,
+          y: enu.north,
+          z: p.z - origin.alt
+        };
+      });
+
+      const tool = simExportSelect.value;
+      let artifact;
+      try {
+        artifact = createArtifact(tool, { scenario, waypoints: localPoints });
+      } catch (error) {
+        const details = error instanceof AdapterValidationError ? error.errors.join('\n• ') : error.message;
+        alert(`Cannot create ${getAdapter(tool).label} export:\n• ${details}`);
+        return;
+      }
+
+      output.textContent = artifact.text;
+      output.style.color = '';
+      output.dataset.kind = 'export';
+      output.dataset.exportTool = artifact.adapterId;
+      output.dataset.exportFilename = artifact.filename;
+      output.dataset.exportMimeType = artifact.mimeType;
+      showExportCompatibilityWarnings(artifact.warnings);
+    });
+
+    let latlngInputTimeout;
+    latlngInput.addEventListener('input', (e) => {
+      const text = e.target.value.trim();
+      output.dataset.kind = 'source';
+      delete output.dataset.exportTool;
+      delete output.dataset.exportFilename;
+      delete output.dataset.exportMimeType;
+
+      // Clear timeout if user is still typing
+      if (latlngInputTimeout) clearTimeout(latlngInputTimeout);
+
+      // Debounce: wait 300ms after user stops typing
+      latlngInputTimeout = setTimeout(() => {
+        if (!text) {
+          // If textarea is empty, clear positions
+          commitHistory();
+          setPositions([]);
+          selected.clear();
+          lastClickedIndex = -1;
+          draw();
+          updateOutput();
+          return;
+        }
+
+        const lines = text.split(/\r?\n/);
+        const parsedLines = [];
+        let firstNodeId = null;
+        for (const line of lines) {
+          if (!line.trim()) continue;
+          const parts = line.trim().split(/\s+/);
+          if (parts.length < 4) continue;
+          let nodeId = parseInt(parts[0]);
+          const time = parseFloat(parts[1]);
+          const lat = parseFloat(parts[2]);
+          const lng = parseFloat(parts[3]);
+          const z = parts.length > 4 ? parseFloat(parts[4]) : 0;
+          if (![nodeId, time, lat, lng, z].every(Number.isFinite)) continue;
+          if (nodeId < 1 || lat < -90 || lat > 90 || lng < -180 || lng > 180) continue;
+
+          // Mobile mode: Use first node's ID for all nodes
+          if (scenario === 'mobile') {
+            if (firstNodeId === null) {
+              firstNodeId = nodeId;
+            } else {
+              nodeId = firstNodeId;
+            }
+          }
+
+          // Fixed mode: time is always 0
+          const finalTime = scenario === 'fixed' ? 0 : time;
+          parsedLines.push({ nodeId, time: finalTime, lat, lng, z, timeGenerated: false });
+        }
+
+        if (parsedLines.length > 0) {
+          commitHistory();
+
+          // Update existing positions or create new ones
+          // Match by lat/lng with tolerance
+          const tolerance = 0.000001; // ~0.1 meter
+          const updatedPositions = [];
+          const usedIndices = new Set();
+
+          // First, try to match parsed lines with existing positions
+          for (const parsed of parsedLines) {
+            let matched = false;
+            for (let i = 0; i < positions.length; i++) {
+              if (usedIndices.has(i)) continue;
+              const existing = positions[i];
+              const latDiff = Math.abs(existing.lat - parsed.lat);
+              const lngDiff = Math.abs(existing.lng - parsed.lng);
+              if (latDiff < tolerance && lngDiff < tolerance) {
+                // Match found - update nodeId
+                updatedPositions.push({ ...parsed, lat: existing.lat, lng: existing.lng });
+                usedIndices.add(i);
+                matched = true;
+                break;
+              }
+            }
+            if (!matched) {
+              // No match - add as new position
+              updatedPositions.push({ ...parsed });
+            }
+          }
+
+          // Mobile mode: Ensure all nodes have the same nodeId (use first node's ID)
+          if (scenario === 'mobile' && updatedPositions.length > 0) {
+            const firstNodeId = updatedPositions[0].nodeId;
+            updatedPositions.forEach(p => {
+              p.nodeId = firstNodeId;
+            });
+          }
+
+          setPositions(updatedPositions);
+
+          refreshLatLngInput();
+          selected.clear();
+          lastClickedIndex = -1;
+
+          // Auto-fit map to show all points
+          if (positions.length > 0) {
+            const bounds = L.latLngBounds(positions.map(p => [p.lat, p.lng]));
+            map.fitBounds(bounds, { padding: [50, 50], maxZoom: 18 });
+          }
+
+          draw();
+          updateOutput();
+        } else if (text) {
+          // Text exists but no valid positions found - clear positions
+          commitHistory();
+          setPositions([]);
+          selected.clear();
+          lastClickedIndex = -1;
+          draw();
+          updateOutput();
+        }
+      }, 300);
+    });
+
+    // === Search Functionality ===
+    let searchTimeout;
+    let currentSearchResults = [];
+
+    searchInput.addEventListener('input', (e) => {
+      const query = e.target.value.trim();
+      if (searchTimeout) clearTimeout(searchTimeout);
+      if (query.length === 0) { searchResults.style.display = 'none'; return; }
+      searchTimeout = setTimeout(() => { searchLocation(query); }, 300);
+    });
+
+    document.addEventListener('click', (e) => {
+      if (!searchInput.contains(e.target) && !searchResults.contains(e.target)) {
+        searchResults.style.display = 'none';
+      }
+    });
+
+    async function searchLocation(query) {
+      try {
+        const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&addressdetails=1`);
+        const results = await response.json();
+        currentSearchResults = results;
+        displaySearchResults(results);
+      } catch (error) {
+        console.error('Search error:', error);
+        searchResults.innerHTML = '<div style="padding: 10px; color: red;">An error occurred during search</div>';
+        searchResults.style.display = 'block';
+      }
+    }
+
+    function displaySearchResults(results) {
+      if (results.length === 0) {
+        searchResults.innerHTML = '<div style="padding: 10px; color: #666;">No results found</div>';
+        searchResults.style.display = 'block';
+        return;
+      }
+      searchResults.innerHTML = results.map((result, index) => {
+        const displayName = result.display_name.split(',').slice(0, 3).join(',');
+        return `<div class="search-result-item" data-index="${index}" style="padding: 8px; cursor: pointer; border-bottom: 1px solid #eee; font-size: 13px;">
+          <div style="font-weight: bold;">${result.display_name.split(',')[0]}</div>
+          <div style="color: #666; font-size: 11px;">${displayName}</div>
+        </div>`;
+      }).join('');
+      searchResults.querySelectorAll('.search-result-item').forEach(item => {
+        item.addEventListener('click', () => {
+          const index = parseInt(item.dataset.index);
+          selectSearchResult(index);
+        });
+        item.addEventListener('mouseenter', () => { item.style.backgroundColor = '#f0f0f0'; });
+        item.addEventListener('mouseleave', () => { item.style.backgroundColor = 'white'; });
+      });
+      searchResults.style.display = 'block';
+    }
+
+    function selectSearchResult(index) {
+      const result = currentSearchResults[index];
+      if (result) {
+        const lat = parseFloat(result.lat);
+        const lng = parseFloat(result.lon);
+        map.setView([lat, lng], 15);
+        searchInput.value = result.display_name.split(',')[0];
+        searchResults.style.display = 'none';
+      }
+    }
+
+    // initial draw
+    refreshSimulatorExportUi();
+    draw(); updateOutput();
+
+    // === Keyboard Shortcuts Overlay ===
+    const shortcutsOverlay = document.getElementById('shortcutsOverlay');
+    let ctrlPressed = false;
+    let questionMarkPressed = false;
+
+    // Show overlay when Ctrl + ? is pressed
+    document.addEventListener('keydown', (e) => {
+      // Check for Ctrl (or Cmd on Mac)
+      if (e.ctrlKey || e.metaKey) {
+        ctrlPressed = true;
+
+        // Check for ? (Shift + / on most keyboards, or Shift + . on Turkish)
+        if (e.key === '?' || (e.shiftKey && e.key === '/')) {
+          questionMarkPressed = true;
+          if (ctrlPressed && questionMarkPressed) {
+            e.preventDefault();
+            shortcutsOverlay.classList.add('show');
+          }
+        }
+      }
+    });
+
+    // Hide overlay when Ctrl or ? is released
+    document.addEventListener('keyup', (e) => {
+      if (e.key === 'Control' || e.key === 'Meta') {
+        ctrlPressed = false;
+        if (!ctrlPressed || !questionMarkPressed) {
+          shortcutsOverlay.classList.remove('show');
+        }
+      }
+
+      if (e.key === '?' || (e.shiftKey && e.key === '/')) {
+        questionMarkPressed = false;
+        if (!ctrlPressed || !questionMarkPressed) {
+          shortcutsOverlay.classList.remove('show');
+        }
+      }
+    });
+
+    // Also hide overlay when clicking outside
+    shortcutsOverlay.addEventListener('click', (e) => {
+      if (e.target === shortcutsOverlay) {
+        shortcutsOverlay.classList.remove('show');
+      }
+    });
+
+    // Show shortcuts button click handler
+    const showShortcutsBtn = document.getElementById('showShortcutsBtn');
+    if (showShortcutsBtn) {
+      showShortcutsBtn.addEventListener('click', () => {
+        shortcutsOverlay.classList.add('show');
+      });
+    }
+  </script>
+</body>
+</html>
