@@ -132,15 +132,19 @@ The currently committed demonstration video and screenshots show an earlier inte
 
 ## Citation
 
-Citation metadata will be updated with the final article record after publication. During anonymous review, use:
+The final author list, article title, venue, DOI, and publication year will be added after peer review. For the anonymous software and reproducibility artifact, use the following interim citation:
+
+> Cooja-Positioner Project, “Cooja-Positioner: A universal web-based topology synthesizer for geo-grounded WSN simulations in Cooja, ns-2, ns-3, and OMNeT++,” software and reproducibility artifact, 2026. [Online]. Available: https://github.com/cooja-positioner-project/cooja-positioner. Live application: https://cooja-positioner-project.github.io/
+
+BibTeX:
 
 ```bibtex
-@misc{cooja-positioner,
-  title        = {Cooja Positioner: A Browser-Based Geo-Scenario Editor for WSN Simulations},
-  author       = {Anonymous Authors},
+@misc{cooja_positioner_2026,
+  author       = {{Cooja-Positioner Project}},
+  title        = {Cooja-Positioner: A Universal Web-Based Topology Synthesizer for Geo-Grounded WSN Simulations in Cooja, ns-2, ns-3, and OMNeT++},
   year         = {2026},
   howpublished = {\url{https://github.com/cooja-positioner-project/cooja-positioner}},
-  note         = {Software and reproducibility artifacts}
+  note         = {Software and reproducibility artifact. Live application: \url{https://cooja-positioner-project.github.io/}}
 }
 ```
 
