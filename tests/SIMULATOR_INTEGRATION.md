@@ -100,6 +100,38 @@ planar, constant-altitude mobile traces in the pinned release. It does not
 establish changing-altitude `setdest` behavior, version-independent
 compatibility, radio/channel fidelity, or protocol-level correctness.
 
+## Executed ns-2 parser experiment
+
+The ns-2 execution layer uses the upstream ns-2.35 source archive packaged
+for Debian/Ubuntu (`ns2_2.35+dfsg.orig.tar.xz`), whose SHA-1 digest is
+recorded in `integrations/toolchains.json`. Before execution, the mobile and
+static fixture files are compared byte-for-byte with the current ns-2 adapter
+output.
+
+Real ns-2's `MobileNode` does not expose a direct Tcl accessor for a node's
+live interpolated position: the bound `X_`/`Y_` variables are only refreshed
+lazily, inside `MobileNode::update_position()`. The verifier forces this
+refresh through the `log-movement` command, which calls `update_position()`
+before an otherwise inert log write (no log target is attached, so the write
+is a no-op) — the same linear-interpolation logic the CMU model uses
+internally, not a custom behavior. Separately, ns-2's `Topography`/`God`
+bookkeeping rejects negative coordinates, which the mobile fixture contains;
+the runner sources a uniformly offset scratch copy of the committed trace and
+subtracts the offset back from the sampled positions before comparison. The
+offset is a grid-bounds workaround only and does not change the mobility
+grammar under test.
+
+The same eight mobile checkpoints and three static checkpoints used for the
+ns-3 experiment were re-evaluated against this independent execution path.
+All 11 checks passed with a maximum observed Euclidean position error of 0 m
+against an acceptance tolerance of `1e-6` m. The machine-readable evidence is
+stored in `integrations/results/ns2-integration-report.json`.
+
+This result establishes parser-level execution for planar static traces and
+planar, constant-altitude mobile traces in the pinned release. It does not
+establish changing-altitude `setdest` behavior, version-independent
+compatibility, radio/channel fidelity, or protocol-level correctness.
+
 ## Executed INET/OMNeT++ parser experiment
 
 The INET execution layer uses OMNeT++ 6.4.0 and INET 4.7.0. The exact Git

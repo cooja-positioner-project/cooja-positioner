@@ -4,7 +4,7 @@ Cooja Positioner is a client-side, browser-based editor for authoring geographic
 
 **Online application:** https://cooja-positioner-project.github.io/
 
-No application server is required. Map tiles and place search currently use external OpenStreetMap and Nominatim services, so those functions require network access.
+No application server is required. Leaflet, the map rendering library, is bundled locally and does not require network access. Map tiles and place search currently use external OpenStreetMap and Nominatim services, so those two functions require network access.
 
 ## What it is for
 
@@ -19,7 +19,9 @@ The tool connects field-oriented deployment planning with simulator setup. A use
 - **Point Mode:** manually add, drag, rename, select, and delete geographic points.
 - **Polygon Mode — static:** generate an approximately hexagonal regular deployment inside a user-drawn polygon using the selected metre spacing.
 - **Polygon Mode — mobile:** generate a horizontal or vertical lawn-mower/scan path inside a polygon.
-- **Circle guide:** display a selectable 10–50 m placement guide. It is a geometric aid, not a connectivity guarantee.
+- **Circle guide:** display a placement guide sized from 10–50 m presets or a custom value. It is a geometric aid, not a connectivity guarantee.
+- **Duplicate Node ID guard:** Static-scenario renames and conversion are blocked when a chosen ID collides with another node.
+- **Session persistence:** the current scenario is saved to the browser's local storage and restored automatically on reload.
 - Undo/redo, multi-selection, keyboard shortcuts, text input, and Cooja position import.
 
 ### Coordinate model
@@ -27,7 +29,7 @@ The tool connects field-oriented deployment planning with simulator setup. A use
 - Canonical geographic state in **WGS84 / EPSG:4326**.
 - WGS84 geodetic → ECEF → local ENU transformation.
 - **First input row** origin policy: the first valid waypoint becomes local `(0, 0)`.
-- **Custom WGS84 origin** policy: offsets are retained from a fixed user-specified reference.
+- **Custom WGS84 origin** policy: offsets are retained from a fixed user-specified reference, set by typing coordinates or by right-clicking a placed node and choosing **Set as Origin**.
 - Coordinate results are independent of map pan, zoom, and viewport state.
 - Geographic altitude is retained in the canonical scenario; each export adapter enforces its supported dimensionality.
 
@@ -36,7 +38,7 @@ The tool connects field-oriented deployment planning with simulator setup. A use
 | Target | Generated file | Current evidence boundary |
 |---|---|---|
 | Cooja Mobility | `positions.dat` | Planar mobile trace; zero-based mote-array index; tested plugin is cyclic. Static and nonzero-Z exports are rejected. |
-| ns-2 | `mobility-ns2.tcl` | Static initialization and planar `setdest` mobility statements. |
+| ns-2 | `mobility-ns2.tcl` | Static initialization and planar `setdest` mobility statements; tested with real ns-2 2.35 (`MobileNode` CMU model). |
 | ns-3 | `mobility-ns3.tcl` | Consumed through `Ns2MobilityHelper`; static and planar mobile fixtures tested with ns-3.47. |
 | INET/OMNeT++ | `mobility-bonnmotion.movements` | Planar BonnMotion `t x y` triplets; tested with OMNeT++ 6.4.0 and INET 4.7.0. |
 
@@ -102,6 +104,7 @@ Run dependency-free checks with Node.js:
 node tests/coordinate-core.test.js
 node tests/simulator-adapters.test.js
 node tests/cooja-integration-fixtures.test.js
+node tests/ns2-integration-fixtures.test.js
 node tests/ns3-integration-fixtures.test.js
 node tests/inet-integration-fixtures.test.js
 node tests/l-shaped-geometry-validation.test.js
@@ -116,6 +119,7 @@ index.html                         Browser application
 coordinate-core.js                 Coordinate transformation core
 simulator-adapters.js              Simulator adapter registry
 keyboard_shortcuts.html            Standalone shortcut reference
+vendor/leaflet/                    Locally bundled Leaflet (no CDN dependency)
 tests/                             Automated checks and runners
 integrations/                      Fixtures, verifier code, and reports
 artifacts/case-study-dataset/      Geographic, Cooja, packet, and summary CSVs

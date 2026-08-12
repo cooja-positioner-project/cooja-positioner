@@ -4,9 +4,9 @@
   <meta charset="UTF-8" />
   <title>Cooja-Positioner — Geo-Scenario Editor and Simulator Exporter</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <!-- Leaflet -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <!-- Leaflet (vendored locally in vendor/leaflet/ — see vendor/leaflet/README.md) -->
+  <link rel="stylesheet" href="vendor/leaflet/leaflet.css"/>
+  <script src="vendor/leaflet/leaflet.js"></script>
   <script src="coordinate-core.js"></script>
   <script src="simulator-adapters.js"></script>
   <style>
@@ -44,7 +44,7 @@
     .context-menu-item:last-child { border-bottom: none; }
     .context-menu-item:hover { background: #f0f0f0; }
     .context-menu-item.delete { color: #d32f2f; }
-
+    
     /* Keyboard Shortcuts Overlay */
     .shortcuts-overlay {
       display: none;
@@ -60,16 +60,16 @@
       justify-content: center;
       animation: fadeIn 0.2s ease-in-out;
     }
-
+    
     .shortcuts-overlay.show {
       display: flex;
     }
-
+    
     @keyframes fadeIn {
       from { opacity: 0; }
       to { opacity: 1; }
     }
-
+    
     .shortcuts-container {
       background: rgba(255, 255, 255, 0.95);
       border-radius: 12px;
@@ -79,7 +79,7 @@
       box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
       animation: slideUp 0.3s ease-out;
     }
-
+    
     @keyframes slideUp {
       from {
         transform: translateY(20px);
@@ -90,7 +90,7 @@
         opacity: 1;
       }
     }
-
+    
     .shortcuts-header {
       display: flex;
       justify-content: space-between;
@@ -99,28 +99,28 @@
       padding-bottom: 15px;
       border-bottom: 2px solid #e0e0e0;
     }
-
+    
     .shortcuts-header h1 {
       font-size: 24px;
       font-weight: 600;
       color: #333;
       margin: 0;
     }
-
+    
     .shortcuts-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 20px;
     }
-
+    
     .shortcut-section {
       margin-bottom: 20px;
     }
-
+    
     .shortcut-section.full-width {
       grid-column: 1 / -1;
     }
-
+    
     .section-title {
       font-size: 14px;
       font-weight: 600;
@@ -129,7 +129,7 @@
       letter-spacing: 0.5px;
       margin-bottom: 12px;
     }
-
+    
     .shortcut-item {
       display: flex;
       justify-content: space-between;
@@ -138,23 +138,23 @@
       border-bottom: 1px solid #f0f0f0;
       gap: 12px;
     }
-
+    
     .shortcut-item:last-child {
       border-bottom: none;
     }
-
+    
     .shortcut-description {
       font-size: 14px;
       color: #333;
       flex: 1;
     }
-
+    
     .shortcut-keys {
       display: flex;
       gap: 6px;
       align-items: center;
     }
-
+    
     .key {
       background: linear-gradient(to bottom, #f5f5f5, #e8e8e8);
       border: 1px solid #d0d0d0;
@@ -168,7 +168,7 @@
       text-align: center;
       font-family: 'Courier New', monospace;
     }
-
+    
     .key.plus {
       background: none;
       border: none;
@@ -178,7 +178,7 @@
       color: #666;
       font-size: 16px;
     }
-
+    
     .shortcuts-footer {
       margin-top: 25px;
       padding-top: 15px;
@@ -196,7 +196,7 @@
       <div class="shortcuts-header">
         <h1>Keyboard Shortcuts</h1>
       </div>
-
+      
       <div class="shortcuts-grid">
         <div class="shortcut-section">
           <div class="section-title">Selection</div>
@@ -231,7 +231,7 @@
             </div>
           </div>
         </div>
-
+        
         <div class="shortcut-section">
           <div class="section-title">Editing</div>
           <div class="shortcut-item">
@@ -257,7 +257,7 @@
             </div>
           </div>
         </div>
-
+        
         <div class="shortcut-section full-width">
           <div class="section-title">Navigation</div>
           <div class="shortcut-item">
@@ -270,7 +270,7 @@
           </div>
         </div>
       </div>
-
+      
       <div class="shortcuts-footer">
         Hold <span class="key">Ctrl</span> + <span class="key">?</span> to show shortcuts
       </div>
@@ -348,7 +348,13 @@
           <option value="30">30m</option>
           <option value="40">40m</option>
           <option value="50">50m</option>
-        </select><br><br>
+          <option value="custom">Custom</option>
+        </select>
+        <div id="customRadiusControls" style="display:none;">
+          <label for="circleRadiusCustomInput">Meters:</label>
+          <input type="number" id="circleRadiusCustomInput" min="0.01" step="any" value="10">
+        </div>
+        <br><br>
       </div>
       <div class="btnrow">
         <button id="undoBtn" title="Ctrl+Z">Undo</button>
@@ -367,6 +373,7 @@
           <label for="latlngInput"><b>Latitude/Longitude Input</b></label>
           <button id="uploadBtn">Upload .dat</button>
         </div>
+        <div class="hint" style="margin: -4px 0 6px; text-align: right;">Upload .dat expects Cooja's <code>positions.dat</code>: <code>node_id time x y z</code> (meters) — not latitude/longitude.</div>
         <textarea id="latlngInput" placeholder="&lt;node_id&gt; &lt;time&gt; &lt;latitude&gt; &lt;longitude&gt;&#10;Example:&#10;1 0.0 41.2867 36.33&#10;1 1.0 41.2870 36.331" style="width: 100%; height: 150px; font-family: monospace; font-size: 12px; padding: 5px; border: 1px solid #ccc; resize: vertical;"></textarea>
         <div style="margin-top: 8px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px;">
           <label for="simExportSelect"><b>Simulator</b></label>
@@ -398,6 +405,7 @@
   <!-- Context Menu -->
   <div id="contextMenu" class="context-menu">
     <div class="context-menu-item" id="renameNodeItem">Rename Node-ID</div>
+    <div class="context-menu-item" id="setOriginItem">Set as Origin (0,0)</div>
     <div class="context-menu-item delete" id="deleteNodeItem">Delete</div>
   </div>
 
@@ -428,6 +436,8 @@
     const outputHeaderLabel = document.getElementById('outputHeaderLabel');
     const exportCompatibilityNotice = document.getElementById('exportCompatibilityNotice');
     const circleRadiusSelect = document.getElementById('circleRadiusSelect');
+    const customRadiusControls = document.getElementById('customRadiusControls');
+    const circleRadiusCustomInput = document.getElementById('circleRadiusCustomInput');
     const searchInput = document.getElementById('searchInput');
     const searchResults = document.getElementById('searchResults');
     const latlngInput = document.getElementById('latlngInput');
@@ -441,6 +451,7 @@
     const scanDirVerticalBtn = document.getElementById('scanDirVertical');
     const contextMenu = document.getElementById('contextMenu');
     const renameNodeItem = document.getElementById('renameNodeItem');
+    const setOriginItem = document.getElementById('setOriginItem');
     const deleteNodeItem = document.getElementById('deleteNodeItem');
 
     // Polygon / route colors (amber polygon border, blue mobile route)
@@ -470,7 +481,7 @@
     // Load saved location from localStorage/cookie or use default
     let savedCenter = [0, 0]; // World center as default (universal for global users)
     let savedZoom = 2; // Wide view to show world map
-
+    
     const savedLocationLS = (() => {
       try { return localStorage.getItem('mapLocation'); } catch { return null; }
     })();
@@ -625,6 +636,18 @@
       return { lat: points[0].lat, lng: points[0].lng, alt: Number.isFinite(points[0].z) ? points[0].z : 0 };
     }
 
+    // True when this waypoint's lat/lng matches the current custom origin
+    // (used to highlight the "anchor" node on the map and toggle the
+    // right-click "Set as Origin" menu label). Purely visual — resolveOrigin()
+    // above is the single source of truth for the actual export math.
+    function isOriginNode(pos) {
+      if (!pos || scenarioModel.origin.mode !== 'custom') return false;
+      const o = scenarioModel.origin;
+      if (!Number.isFinite(o.lat) || !Number.isFinite(o.lng)) return false;
+      const tol = 1e-7; // ~1 cm
+      return Math.abs(pos.lat - o.lat) < tol && Math.abs(pos.lng - o.lng) < tol;
+    }
+
     function renderOriginUi() {
       const custom = originModeSelect.value === 'custom';
       customOriginControls.style.display = custom ? 'block' : 'none';
@@ -692,6 +715,64 @@
       updateOutput();
     }
 
+    // === Session persistence (localStorage) ===
+    // Only mapLocation (center/zoom) used to survive a refresh; placed nodes
+    // did not. This mirrors that pattern for the full scenario state so a
+    // refresh restores exactly where the user left off.
+    const SESSION_STORAGE_KEY = 'cpxSessionState';
+    let sessionSaveTimeout;
+
+    function persistSessionStateNow() {
+      try {
+        localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify({
+          schemaVersion: scenarioModel.schemaVersion,
+          state: snapshot()
+        }));
+      } catch (e) { /* localStorage unavailable or over quota — ignore */ }
+    }
+
+    function persistSessionStateDebounced() {
+      if (sessionSaveTimeout) clearTimeout(sessionSaveTimeout);
+      sessionSaveTimeout = setTimeout(persistSessionStateNow, 400);
+    }
+
+    function clearPersistedSessionState() {
+      if (sessionSaveTimeout) clearTimeout(sessionSaveTimeout);
+      try { localStorage.removeItem(SESSION_STORAGE_KEY); } catch (e) {}
+    }
+
+    function loadPersistedSessionState() {
+      try {
+        const raw = localStorage.getItem(SESSION_STORAGE_KEY);
+        if (!raw) return null;
+        const saved = JSON.parse(raw);
+        if (!saved || saved.schemaVersion !== scenarioModel.schemaVersion) return null;
+        if (!saved.state || !Array.isArray(saved.state.positions)) return null;
+        return saved.state;
+      } catch (e) {
+        return null;
+      }
+    }
+
+    window.addEventListener('beforeunload', persistSessionStateNow);
+
+    // === Circle Radius (visual reference ring + Hex Grid / Scan Path spacing) ===
+    function renderCircleRadiusUi() {
+      const custom = circleRadiusSelect.value === 'custom';
+      customRadiusControls.style.display = custom ? 'inline-block' : 'none';
+    }
+
+    function getCircleRadiusMeters() {
+      if (circleRadiusSelect.value === 'custom') {
+        const custom = Number.parseFloat(circleRadiusCustomInput.value);
+        return Number.isFinite(custom) && custom > 0 ? custom : 10;
+      }
+      return Number.parseFloat(circleRadiusSelect.value) || 10;
+    }
+
+    circleRadiusSelect.addEventListener('change', renderCircleRadiusUi);
+    renderCircleRadiusUi();
+
     // Utils
     function resize() {
       const rect = stage.getBoundingClientRect();
@@ -700,7 +781,7 @@
     }
     window.addEventListener('resize', resize); resize();
 
-    function nodeRadiusPx(){
+    function nodeRadiusPx(){ 
       const nodeId = String(parseInt(nodeInput.value) || 1);
       // Increase radius for longer Node IDs (doubled for better visibility)
       const baseRadius = 10; // Doubled from 5
@@ -775,7 +856,7 @@
       if (scenario !== 'fixed') return;
       if (polygonDraft.length < 3) return;
 
-      const radiusMeters = parseFloat(circleRadiusSelect.value) || 10;
+      const radiusMeters = getCircleRadiusMeters();
       const lat0 = polygonDraft[0].lat;
       const lng0 = polygonDraft[0].lng;
 
@@ -861,7 +942,7 @@
       if (scenario !== 'mobile') return;
       if (polygonDraft.length < 3) return;
 
-      const radiusMeters = parseFloat(circleRadiusSelect.value) || 10;
+      const radiusMeters = getCircleRadiusMeters();
       const step = radiusMeters; // waypoint step along the scan line
       const passSpacing = radiusMeters; // distance between scan passes
       const lat0 = polygonDraft[0].lat;
@@ -954,11 +1035,11 @@
       draw();
       updateOutput();
     }
-
+    
     scenarioMobileBtn.addEventListener('click', () => {
       updateScenario('mobile');
     });
-
+    
     scenarioFixedBtn.addEventListener('click', () => {
       updateScenario('fixed');
     });
@@ -972,7 +1053,7 @@
       const polygonModeHint = document.getElementById('polygonModeHint');
       if (polygonModeHint) polygonModeHint.style.display = (value === 'polygon' ? 'block' : 'none');
       updatePolygonMobileControlsVisibility();
-
+      
       if (mode === 'maps') {
         // Maps mode: Enable map dragging and zooming
         map.dragging.enable();
@@ -993,11 +1074,11 @@
       }
       draw();
     }
-
+    
     workModeMapsBtn.addEventListener('click', () => {
       updateWorkMode('maps');
     });
-
+    
     workModePointBtn.addEventListener('click', () => {
       updateWorkMode('point');
     });
@@ -1013,10 +1094,10 @@
     setPolygonUiEnabled();
 
     // === Map-mode interactions ===
-    map.on('mousemove', (e)=>{
+    map.on('mousemove', (e)=>{ 
       if (mode === 'point') {
         // Node dragging
-        if (draggingNodeIndex >= 0 && selected.size > 0) {
+        if (draggingNodeIndex >= 0 && selected.size > 0) { 
           wasDragging = true;
           const currentLatLng = e.latlng;
           const startLatLng = [preDragSnapshot.positions[draggingNodeIndex].lat, preDragSnapshot.positions[draggingNodeIndex].lng];
@@ -1043,12 +1124,12 @@
       }
     });
 
-    map.on('mousedown', (e)=>{
+    map.on('mousedown', (e)=>{ 
       // Only allow node editing in point mode
       if (mode === 'point') {
-        const pt = map.latLngToContainerPoint(e.latlng);
+        const pt = map.latLngToContainerPoint(e.latlng); 
         const i = hitTestNodeMap(pt.x, pt.y);
-
+        
         // Ctrl + Click: Point selection (single or multi with Shift)
         if (e.originalEvent.ctrlKey || e.originalEvent.metaKey) {
           isCtrlSelection = true;
@@ -1083,10 +1164,10 @@
           isCtrlSelection = false;
           draggingNodeIndex = i;
           preDragSnapshot = snapshot();
-          selectedInitial = Array.from(selected).map(idx => ({
-            idx,
-            lat: positions[idx].lat,
-            lng: positions[idx].lng
+          selectedInitial = Array.from(selected).map(idx => ({ 
+            idx, 
+            lat: positions[idx].lat, 
+            lng: positions[idx].lng 
           }));
           dragStartPx = map.latLngToContainerPoint([positions[i].lat, positions[i].lng]);
           wasDragging = false;
@@ -1155,36 +1236,36 @@
       setDir(mobileScanDirection);
     }
 
-    map.on('mouseup', (e)=>{
+    map.on('mouseup', (e)=>{ 
       if (mode === 'point') {
         if (draggingNodeIndex >= 0) {
           // Finish dragging
-          const before = JSON.stringify(preDragSnapshot.positions);
-          const after = JSON.stringify(positions);
+          const before = JSON.stringify(preDragSnapshot.positions); 
+          const after = JSON.stringify(positions); 
           if (before !== after) commitHistory(preDragSnapshot);
           refreshLatLngInput();
           updateOutput();
         }
         else if (isSelectingRect) {
           const dx = Math.abs(selEndS.x - selStartS.x);
-          const dy = Math.abs(selEndS.y - selStartS.y);
+          const dy = Math.abs(selEndS.y - selStartS.y); 
           const dragged = (dx + dy) > 4;
-
+          
           // Ctrl + Rectangle selection: Select points in rectangle
           if (isCtrlSelection) {
             if (dragged) {
               const minX = Math.min(selStartS.x, selEndS.x);
-              const maxX = Math.max(selStartS.x, selEndS.x);
+              const maxX = Math.max(selStartS.x, selEndS.x); 
               const minY = Math.min(selStartS.y, selEndS.y);
-              const maxY = Math.max(selStartS.y, selEndS.y);
-
+              const maxY = Math.max(selStartS.y, selEndS.y); 
+              
               // Add to selection if Shift, replace if not
               if (!e.originalEvent.shiftKey) {
                 selected.clear();
               }
-
-              positions.forEach((p, idx) => {
-                const s = map.latLngToContainerPoint([p.lat, p.lng]);
+              
+              positions.forEach((p, idx) => { 
+                const s = map.latLngToContainerPoint([p.lat, p.lng]); 
                 if (s.x >= minX && s.x <= maxX && s.y >= minY && s.y <= maxY) {
                   selected.add(idx);
                 }
@@ -1194,10 +1275,10 @@
           }
           // Normal Click: Add new point
           else if (window.mouseDownLatLng && !dragged) {
-            commitHistory();
+            commitHistory(); 
             const lat = window.mouseDownLatLng.lat;
             const lng = window.mouseDownLatLng.lng;
-
+            
             // Calculate next nodeId based on scenario
             let nextNodeId;
             if (scenario === 'mobile') {
@@ -1215,7 +1296,7 @@
                 nextNodeId = maxNodeId + 1;
               }
             }
-
+            
             const pointIndex = positions.length;
             positions.push(canonicalWaypoint({
               lat,
@@ -1225,47 +1306,47 @@
               z: 0,
               timeGenerated: true
             }, pointIndex));
-            selected.clear();
-            selected.add(positions.length - 1);
+            selected.clear(); 
+            selected.add(positions.length - 1); 
             lastClickedIndex = positions.length - 1;
             refreshLatLngInput();
             updateOutput();
-
+            
             // Scroll to bottom
             latlngInput.scrollTop = latlngInput.scrollHeight;
-
+            
             // Save map location to cookie when adding a point
             saveMapLocation();
 
-            draw();
+            draw(); 
           }
         }
       }
-
+      
       // Re-enable dragging only in maps mode
       if (mode === 'maps') {
         map.dragging.enable();
       }
-
+      
       // Reset state
       draggingNodeIndex = -1;
       selectedInitial = null;
-      preDragSnapshot = null;
+      preDragSnapshot = null; 
       isSelectingRect = false;
-      selStartS = selEndS = null;
+      selStartS = selEndS = null; 
       window.mouseDownLatLng = null;
       isCtrlSelection = false;
       setTimeout(() => { wasDragging = false; }, 50);
-      draw();
+      draw(); 
     });
 
-    map.on('move zoom', ()=>{
+    map.on('move zoom', ()=>{ 
       requestAnimationFrame(() => {
         draw();
       });
     });
-
-    map.on('zoomend', ()=>{
+    
+    map.on('zoomend', ()=>{ 
       draw();
     });
 
@@ -1273,16 +1354,20 @@
     map.on('contextmenu', (e) => {
       e.originalEvent.preventDefault();
       if (mode !== 'point') return;
-
+      
       const pt = map.latLngToContainerPoint(e.latlng);
       const i = hitTestNodeMap(pt.x, pt.y);
-
+      
       if (i >= 0) {
         contextMenuNodeIndex = i;
         selected.clear();
         selected.add(i);
         lastClickedIndex = i;
         draw();
+
+        if (setOriginItem) {
+          setOriginItem.textContent = isOriginNode(positions[i]) ? 'Unset Origin (use first row)' : 'Set as Origin (0,0)';
+        }
 
         // Show context menu at mouse position
         contextMenu.style.left = e.originalEvent.clientX + 'px';
@@ -1307,8 +1392,20 @@
         const currentId = position.nodeId || (contextMenuNodeIndex + 1);
         const newId = prompt('Enter new Node ID:', currentId);
         if (newId !== null && !isNaN(parseInt(newId))) {
-          commitHistory();
           const newNodeId = parseInt(newId);
+
+          if (scenario === 'fixed') {
+            // Static: node IDs must stay unique — a duplicate would collapse
+            // two distinct field points onto the same simulator node index.
+            const duplicate = positions.some((p, idx) => idx !== contextMenuNodeIndex && p.nodeId === newNodeId);
+            if (duplicate) {
+              alert(`Node ID ${newNodeId} is already used by another node. Choose a different ID.`);
+              contextMenu.classList.remove('show');
+              return;
+            }
+          }
+
+          commitHistory();
 
           if (scenario === 'mobile') {
             // Mobile mode: Update all nodes to have the same nodeId
@@ -1321,10 +1418,28 @@
           }
 
           refreshLatLngInput();
-
+          
           draw();
           updateOutput();
         }
+      }
+      contextMenu.classList.remove('show');
+    });
+
+    setOriginItem.addEventListener('click', () => {
+      if (contextMenuNodeIndex >= 0 && contextMenuNodeIndex < positions.length) {
+        const target = positions[contextMenuNodeIndex];
+        if (isOriginNode(target)) {
+          // Already the origin: revert to default (first input row) behavior.
+          originModeSelect.value = 'first';
+          renderOriginUi();
+        } else {
+          // Fill the existing Custom WGS84 Point fields from this node, so the
+          // export math (resolveOrigin/geodeticToEnu) treats it as (0,0,0).
+          setCustomOrigin({ lat: target.lat, lng: target.lng, alt: target.z || 0 });
+        }
+        updateOutput();
+        draw();
       }
       contextMenu.classList.remove('show');
     });
@@ -1390,9 +1505,9 @@
     undoBtn.addEventListener('click', ()=>{ undo(); });
     redoBtn.addEventListener('click', ()=>{ redo(); });
 
-    function deleteSelected(){
-      if (!selected.size) return;
-      commitHistory();
+    function deleteSelected(){ 
+      if (!selected.size) return; 
+      commitHistory(); 
       // Update lastClickedIndex if deleted point was the last clicked
       if (selected.has(lastClickedIndex)) {
         lastClickedIndex = -1;
@@ -1407,16 +1522,16 @@
       setPositions(positions.filter((_,idx)=>!selected.has(idx)));
       selected.clear();
       refreshLatLngInput();
-
-      draw();
-      updateOutput();
+      
+      draw(); 
+      updateOutput(); 
     }
 
-    resetBtn.addEventListener('click', ()=>{
-      commitHistory();
+    resetBtn.addEventListener('click', ()=>{ 
+      commitHistory(); 
       setPositions([]);
-      selected.clear();
-      lastClickedIndex = -1;
+      selected.clear(); 
+      lastClickedIndex = -1; 
       refreshLatLngInput();
       // Clear persisted polygons as well
       if (deployedPolygons && deployedPolygons.length) {
@@ -1424,6 +1539,7 @@
         deployedPolygons = [];
       }
       clearPolygonDraft();
+      clearPersistedSessionState();
       updateOutput();
       draw();
     });
@@ -1444,6 +1560,10 @@
     });
     uploadBtn.addEventListener('click', ()=>{ uploadInput.click(); });
     copyOutputBtn.addEventListener('click', async ()=>{
+      if (output.dataset.kind !== 'export') {
+        alert('Choose a simulator and press Convert before copying.');
+        return;
+      }
       try {
         await navigator.clipboard.writeText(output.textContent);
         const originalText = copyOutputBtn.textContent;
@@ -1553,22 +1673,22 @@
       }
       ctx.clearRect(0,0,canvas.width, canvas.height);
 
-      const rPx = nodeRadiusPx(); let index=1;
+      const rPx = nodeRadiusPx(); let index=1; 
       // Draw route links only in Mobile scenario (movement path).
       // In Static scenario, we don't know actual connectivity, so we draw no links.
-      if (scenario === 'mobile' && positions.length>1){
-        ctx.beginPath(); ctx.strokeStyle=ROUTE_STROKE; ctx.lineWidth=1.5;
-        let s = map.latLngToContainerPoint([positions[0].lat, positions[0].lng]);
-        ctx.moveTo(s.x, s.y);
-        for (let i=1;i<positions.length;i++){
-          s = map.latLngToContainerPoint([positions[i].lat, positions[i].lng]);
+      if (scenario === 'mobile' && positions.length>1){ 
+        ctx.beginPath(); ctx.strokeStyle=ROUTE_STROKE; ctx.lineWidth=1.5; 
+        let s = map.latLngToContainerPoint([positions[0].lat, positions[0].lng]); 
+        ctx.moveTo(s.x, s.y); 
+        for (let i=1;i<positions.length;i++){ 
+          s = map.latLngToContainerPoint([positions[i].lat, positions[i].lng]); 
           ctx.lineTo(s.x, s.y);
-        }
-        ctx.stroke();
+        } 
+        ctx.stroke(); 
       }
-      for (let i=0;i<positions.length;i++){
-        const p=positions[i];
-        const s=map.latLngToContainerPoint([p.lat, p.lng]);
+      for (let i=0;i<positions.length;i++){ 
+        const p=positions[i]; 
+        const s=map.latLngToContainerPoint([p.lat, p.lng]); 
         const nodeId = p.nodeId || (i + 1);
         const nodeIdStr = String(nodeId);
         const baseRadius = 10; // Doubled from 5
@@ -1578,10 +1698,10 @@
         else if (idLength <= 3) nodeRadius = baseRadius + 4; // Doubled from +2
         else if (idLength <= 4) nodeRadius = baseRadius + 8; // Doubled from +4
         else nodeRadius = baseRadius + 12; // Doubled from +6
-        drawNodeCircle(s.x, s.y, nodeRadius, i+1);
+        drawNodeCircle(s.x, s.y, nodeRadius, i+1); 
       }
       // Circle Radius ring for every selected node (communication range visualization)
-      const radiusMeters = parseFloat(circleRadiusSelect.value) || 10;
+      const radiusMeters = getCircleRadiusMeters();
       if (selected.size > 0) {
         for (const idx of selected) {
           if (idx < 0 || idx >= positions.length) continue;
@@ -1617,24 +1737,34 @@
       if (isSelectingRect && selStartS && selEndS){ drawSelectionRect(selStartS.x, selStartS.y, selEndS.x, selEndS.y); }
     }
 
-    function drawNodeCircle(cx, cy, rPx, index){
-      ctx.beginPath(); ctx.fillStyle=NODE_STYLE.fill; ctx.strokeStyle=NODE_STYLE.stroke; ctx.lineWidth=NODE_STYLE.strokeWidth;
+    function drawNodeCircle(cx, cy, rPx, index){ 
+      ctx.beginPath(); ctx.fillStyle=NODE_STYLE.fill; ctx.strokeStyle=NODE_STYLE.stroke; ctx.lineWidth=NODE_STYLE.strokeWidth; 
       ctx.arc(cx, cy, rPx, 0, Math.PI*2); ctx.fill(); ctx.stroke();
       const idx=index-1;
       // Selection is shown via Circle Radius rings in draw(); avoid double outline on the node disk.
       // Use Node ID from position object
       const position = positions[idx];
+      if (isOriginNode(position)) {
+        ctx.save();
+        ctx.beginPath();
+        ctx.strokeStyle = '#16a34a';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([3, 3]);
+        ctx.arc(cx, cy, rPx + 5, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+      }
       const nodeId = position && position.nodeId ? String(position.nodeId) : String(idx + 1);
       const label = nodeId;
-      const fontSize=fitFontToCircle(label, rPx, 16); // Doubled from 8
-      ctx.font=`bold ${fontSize}px Arial`; ctx.fillStyle=NODE_STYLE.label; ctx.textAlign='center'; ctx.textBaseline='middle';
-      ctx.fillText(label, cx, cy);
+      const fontSize=fitFontToCircle(label, rPx, 16); // Doubled from 8 
+      ctx.font=`bold ${fontSize}px Arial`; ctx.fillStyle=NODE_STYLE.label; ctx.textAlign='center'; ctx.textBaseline='middle'; 
+      ctx.fillText(label, cx, cy); 
     }
 
-    function drawSelectionRect(x1,y1,x2,y2){
-      const x=Math.min(x1,x2), y=Math.min(y1,y2), w=Math.abs(x2-x1), h=Math.abs(y2-y1);
-      ctx.save(); ctx.fillStyle='rgba(0,120,215,0.15)'; ctx.strokeStyle='rgba(0,120,215,0.9)'; ctx.lineWidth=1.2;
-      ctx.fillRect(x,y,w,h); ctx.strokeRect(x,y,w,h); ctx.restore();
+    function drawSelectionRect(x1,y1,x2,y2){ 
+      const x=Math.min(x1,x2), y=Math.min(y1,y2), w=Math.abs(x2-x1), h=Math.abs(y2-y1); 
+      ctx.save(); ctx.fillStyle='rgba(0,120,215,0.15)'; ctx.strokeStyle='rgba(0,120,215,0.9)'; ctx.lineWidth=1.2; 
+      ctx.fillRect(x,y,w,h); ctx.strokeRect(x,y,w,h); ctx.restore(); 
     }
 
     // Simulator-specific validation and serialization live in simulator-adapters.js.
@@ -1666,6 +1796,7 @@
       delete output.dataset.exportTool;
       delete output.dataset.exportFilename;
       delete output.dataset.exportMimeType;
+      persistSessionStateDebounced();
       if (positions.length === 0) {
         output.textContent = '<node_id> <time> <latitude> <longitude>\n\nEdit map or paste rows above, then choose simulator and Convert.\nExample:\n1 0.000000000 41.286700000 36.330000000\n1 1.000000000 41.287000000 36.331000000';
         output.style.color = '#999';
@@ -1676,6 +1807,7 @@
     }
 
     circleRadiusSelect.addEventListener('change', () => { draw(); });
+    circleRadiusCustomInput.addEventListener('input', () => { draw(); });
 
     simExportSelect.addEventListener('change', () => {
       refreshSimulatorExportUi();
@@ -1717,6 +1849,21 @@
       if (!parsedPoints.length) {
         updateOutput();
         return;
+      }
+
+      if (scenario === 'fixed') {
+        // Static: a duplicate node ID would silently collapse two distinct
+        // field points onto the same simulator node index on export.
+        const seen = new Set();
+        const duplicateIds = new Set();
+        parsedPoints.forEach(p => {
+          if (seen.has(p.nodeId)) duplicateIds.add(p.nodeId);
+          else seen.add(p.nodeId);
+        });
+        if (duplicateIds.size) {
+          alert(`Duplicate Node ID(s) in Static scenario: ${Array.from(duplicateIds).join(', ')}. Each node needs a unique ID.`);
+          return;
+        }
       }
 
       if (scenario === 'mobile') {
@@ -1772,10 +1919,10 @@
       delete output.dataset.exportTool;
       delete output.dataset.exportFilename;
       delete output.dataset.exportMimeType;
-
+      
       // Clear timeout if user is still typing
       if (latlngInputTimeout) clearTimeout(latlngInputTimeout);
-
+      
       // Debounce: wait 300ms after user stops typing
       latlngInputTimeout = setTimeout(() => {
         if (!text) {
@@ -1788,7 +1935,7 @@
           updateOutput();
           return;
         }
-
+        
         const lines = text.split(/\r?\n/);
         const parsedLines = [];
         let firstNodeId = null;
@@ -1803,7 +1950,7 @@
           const z = parts.length > 4 ? parseFloat(parts[4]) : 0;
           if (![nodeId, time, lat, lng, z].every(Number.isFinite)) continue;
           if (nodeId < 1 || lat < -90 || lat > 90 || lng < -180 || lng > 180) continue;
-
+          
           // Mobile mode: Use first node's ID for all nodes
           if (scenario === 'mobile') {
             if (firstNodeId === null) {
@@ -1812,21 +1959,21 @@
               nodeId = firstNodeId;
             }
           }
-
+          
           // Fixed mode: time is always 0
           const finalTime = scenario === 'fixed' ? 0 : time;
           parsedLines.push({ nodeId, time: finalTime, lat, lng, z, timeGenerated: false });
         }
-
+        
         if (parsedLines.length > 0) {
           commitHistory();
-
+          
           // Update existing positions or create new ones
           // Match by lat/lng with tolerance
           const tolerance = 0.000001; // ~0.1 meter
           const updatedPositions = [];
           const usedIndices = new Set();
-
+          
           // First, try to match parsed lines with existing positions
           for (const parsed of parsedLines) {
             let matched = false;
@@ -1848,7 +1995,7 @@
               updatedPositions.push({ ...parsed });
             }
           }
-
+          
           // Mobile mode: Ensure all nodes have the same nodeId (use first node's ID)
           if (scenario === 'mobile' && updatedPositions.length > 0) {
             const firstNodeId = updatedPositions[0].nodeId;
@@ -1856,19 +2003,19 @@
               p.nodeId = firstNodeId;
             });
           }
-
+          
           setPositions(updatedPositions);
-
+          
           refreshLatLngInput();
           selected.clear();
           lastClickedIndex = -1;
-
+          
           // Auto-fit map to show all points
           if (positions.length > 0) {
             const bounds = L.latLngBounds(positions.map(p => [p.lat, p.lng]));
             map.fitBounds(bounds, { padding: [50, 50], maxZoom: 18 });
           }
-
+          
           draw();
           updateOutput();
         } else if (text) {
@@ -1948,9 +2095,12 @@
       }
     }
 
-    // initial draw
+    // Restore a previous session (if any) before the first render, so a page
+    // refresh doesn't lose placed nodes.
+    const restoredSession = loadPersistedSessionState();
     refreshSimulatorExportUi();
-    draw(); updateOutput();
+    if (restoredSession) restore(restoredSession);
+    else { draw(); updateOutput(); }
 
     // === Keyboard Shortcuts Overlay ===
     const shortcutsOverlay = document.getElementById('shortcutsOverlay');
@@ -1962,7 +2112,7 @@
       // Check for Ctrl (or Cmd on Mac)
       if (e.ctrlKey || e.metaKey) {
         ctrlPressed = true;
-
+        
         // Check for ? (Shift + / on most keyboards, or Shift + . on Turkish)
         if (e.key === '?' || (e.shiftKey && e.key === '/')) {
           questionMarkPressed = true;
@@ -1982,7 +2132,7 @@
           shortcutsOverlay.classList.remove('show');
         }
       }
-
+      
       if (e.key === '?' || (e.shiftKey && e.key === '/')) {
         questionMarkPressed = false;
         if (!ctrlPressed || !questionMarkPressed) {

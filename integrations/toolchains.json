@@ -23,6 +23,14 @@
     "requiredParser": "ns3::Ns2MobilityHelper",
     "executionProgram": "integrations/ns3/cooja-positioner-ns3.cc"
   },
+  "ns2": {
+    "release": "2.35+dfsg",
+    "packageRevision": "2.35+dfsg-5build2",
+    "archiveUrl": "http://archive.ubuntu.com/ubuntu/pool/universe/n/ns2/ns2_2.35+dfsg.orig.tar.xz",
+    "archiveSha1": "8f41b022adc5a7087ca54da473d30c007515d1b1",
+    "requiredParser": "MobileNode::setdest / MobileNode::update_position (common/mobilenode.cc, real /usr/bin/ns execution)",
+    "executionProgram": "integrations/ns2/verifier/verify-mobility.tcl"
+  },
   "inet": {
     "omnetppRelease": "6.4.0",
     "omnetppRevision": "2cf25223fee7c2386f4c610f6fcb12d9585497ab",
